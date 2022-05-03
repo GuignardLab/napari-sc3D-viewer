@@ -2,20 +2,9 @@ name: napari-sc3D-viewer
 display_name: sc3D Viewer
 contributions:
   commands: 
-    - id: napari-sc3D-viewer.make_qwidget
-      python_name: napari_sc3d_viewer._widget:ExampleQWidget
-      title: Make example QWidget
-    - id: napari-sc3D-viewer.make_magic_widget
-      python_name: napari_sc3d_viewer._widget:example_magic_widget
-      title: Make example magic widget
-    - id: napari-sc3D-viewer.make_func_widget
-      python_name: napari_sc3d_viewer._widget:example_function_widget
-      title: Make example function widget   
+    - id: napari-sc3D-viewer.sc3D_viewer
+      python_name: napari_sc3d_viewer._widget:Startsc3D
+      title: Make sc3D Viewer Widget
   widgets:
-    - command: napari-sc3D-viewer.make_qwidget
-      display_name: Example QWidget
-    - command: napari-sc3D-viewer.make_magic_widget
-      display_name: Example Magic Widget
-    - command: napari-sc3D-viewer.make_func_widget
-      autogenerate: true
-      display_name: Example Function Widget 
+    - command: napari-sc3D-viewer.sc3D_viewer
+      display_name: Start sc3D Viewer
