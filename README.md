@@ -33,6 +33,11 @@ To install latest development version :
 
     pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
 
+## Usage
+So far, you have to figure out by yourself (not for too long hopefully).
+You can find the necessary data [ther](https://github.com/GuignardLab/sc3D/tree/main/data) and [there](https://figshare.com/s/1c29d867bc8b90d754d2).
+
+Good luck ...
 
 ## Contributing
 
