@@ -67,9 +67,9 @@ class SelectFromCollection:
         path = PathMPL(verts)
         self.ind = np.nonzero(path.contains_points(self.xys))[0]
         self.ind_mask = path.contains_points(self.xys)
-        self.fc[:, -1] = self.alpha_other
-        self.fc[self.ind, -1] = 1
-        self.collection.set_facecolors(self.fc)
+        # self.fc[:, -1] = self.alpha_other
+        # self.fc[self.ind, -1] = 1
+        # self.collection.set_alpha(self.fc[:, -1])
         self.canvas.draw_idle()
         self.selected_coordinates = self.xys[self.ind].data
 
@@ -344,7 +344,8 @@ def display_embryo(viewer, embryo):
 
     @magicgui(call_button='Threshold cells',
               min={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''},
-              max={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''})
+              max={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''},
+              result_widget=True)
     def threshold(viewer: Viewer, min: float=0, max: float=1):
         points = viewer.layers.selection.active
         if points is None:
@@ -353,23 +354,42 @@ def display_embryo(viewer, embryo):
             points.features['current_view'] = points.shown.copy()
         if max < min:
             max, min = min, max
-        points.shown = (points.features['current_view']&
-                        (min<=points.features['gene'])&(points.features['gene']<=max))
+        mask = (points.features['current_view'] &
+                 (min<=points.features['gene'])&(points.features['gene']<=max))
+        points.shown = (mask)
         points.refresh()
+        nb_selected = np.sum(mask)
+        overall = np.sum(points.features['current_view'])
+        return (f'{nb_selected} cells '
+                f'({100*nb_selected/overall:.1f}% of the initial)')
 
     @magicgui(call_button='Show gene on Umap',
               gene={'label': 'Choose gene', 'value': 'T'},
+              tissues={'label': 'Display tissues umap', 'value': False},
               result_widget=True)
-    def umap_gene(viewer: Viewer, gene: str):
+    def umap_gene(viewer: Viewer, gene: str, tissues: bool):
         def show_cells(event):
             if event:
                 if not hasattr(points.features, 'current_view'):
                     points.features['current_view'] = points.shown.copy()
                 points.shown = np.zeros_like(points.shown, dtype=bool)
-                if len(selector.ind)==0:
+                if sum(len(s.ind) for s in selectors)==0:
                     points.shown = points.features['current_view']
+                    [pt.set_alpha(1) for pt in pts]
+                    ax_G.set_title(f'Gene: {gene}')
                 else:
-                    points.shown[selector.ind] = points.features['current_view'][selector.ind]
+                    for i, s in enumerate(selectors):
+                        if len(s.ind)!=0:
+                            indices = corres_to_mask[sorted_vals][s.ind]
+                            nb_init = np.sum(points.features['current_view'])
+                            points.shown[indices] = points.features['current_view'][indices]
+                            nb = np.sum(points.shown[indices])
+                            ax_G.set_title(f'Gene: {gene} ({nb} cells '
+                                           f'({100*nb/nb_init:.1f}% of the initial))')
+                            alpha = np.zeros_like(sorted_vals)+.1
+                            alpha[s.ind] = 1
+                            [pt.set_alpha(alpha) for pt in pts]
+                            s.ind = []
                 points.refresh()
         points = viewer.layers.selection.active
         cell_list = list(embryo.all_cells)
@@ -379,28 +399,64 @@ def display_embryo(viewer, embryo):
             mask = points.features['current_view']
         else:
             mask = points.shown
-        colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
-        min_c, max_c = colors[mask].min(), colors[mask].max()
-        colors = (colors-min_c)/(max_c-min_c)
-        colors[~mask] = 0
         static_canvas = FigureCanvas()
-        ax = static_canvas.figure.add_subplot(111)
-        alpha_mask = np.zeros_like(mask, dtype=float)
-        alpha_mask[~mask] = .1
-        alpha_mask[mask] = 1
-        pts = ax.scatter(*embryo.anndata.obsm['X_umap'][:, :2].T, marker='.',
-                         c=colors, alpha=mask.astype(int))
-        pts.set_edgecolor('none')
-        selector = SelectFromCollection(ax, pts)
+        if tissues:
+            ax_G = static_canvas.figure.add_subplot(2, 1, 1)
+            ax_T = static_canvas.figure.add_subplot(2, 1, 2)
+        else:
+            ax_G = static_canvas.figure.add_subplot(1, 1, 1)
+
+        corres_to_mask = np.where(mask)[0]
+        val_g = embryo.anndata.raw[:, gene].X.toarray()[mask, 0]
+        colors = val_g
+        pos_cells = embryo.anndata.obsm['X_umap'][mask, :2]
+        sorted_vals = np.argsort(val_g)
+        min_c, max_c = colors.min(), colors.max()
+        colors = (colors-min_c)/(max_c-min_c)
+        pts_G = ax_G.scatter(*pos_cells[sorted_vals, :].T, marker='.',
+                              c=colors[sorted_vals])
+        pts = [pts_G]
+        pts_G.set_edgecolor('none')
+        ax_G.set_xticks([])
+        ax_G.set_yticks([])
+        if not tissues:
+            ax_G.set_xlabel('umap 1')
+        ax_G.set_ylabel('umap 2')
+        ax_G.set_title(f'Gene: {gene}')
+        ax_G.set_aspect('equal')
+        static_canvas.figure.tight_layout()
+        selectors = []
+        selectors.append(SelectFromCollection(ax_G, pts_G))
+        if tissues:
+            colors_T = [color_map_tissues.get(embryo.tissue[c], [0, 0, 0])
+                        for c in corres_to_mask]
+            colors_T = np.array(colors_T)
+            pts_T = ax_T.scatter(*pos_cells[sorted_vals, :].T, marker='.',
+                                 color=colors_T[sorted_vals])
+            pts.append(pts_T)
+            pts_T.set_edgecolor('none')
+            ax_T.set_xticks([])
+            ax_T.set_yticks([])
+            ax_T.set_xlabel('umap 1')
+            ax_T.set_ylabel('umap 2')
+            ax_T.set_title(f'Tissues')
+            tissues_found = set([embryo.tissue[c] for c in corres_to_mask])
+            for t in tissues_found:
+                ax_T.plot([], [], 'o',
+                          color=color_map_tissues.get(t, [0, 0, 0]),
+                          label=embryo.corres_tissue.get(t, f'{t}'))
+            selectors.append(SelectFromCollection(ax_T, pts_T))
+            ax_T.set_aspect('equal')
+            ax_T.legend(fontsize='xx-small', frameon=False, shadow=False)
         static_canvas.figure.canvas.mpl_connect("button_release_event", show_cells)
         viewer.window.add_dock_widget(static_canvas, name='umap', add_vertical_stretch=False)   
 
     viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
-    viewer.window.add_dock_widget(umap_gene, name='umap selection')
     viewer.window.add_dock_widget(disp_legend, name='Legend')
     viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
     g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
+    viewer.window.add_dock_widget(umap_gene, name='umap selection')
     g_th = viewer.window.add_dock_widget(threshold, name='Gene threshold')
     contrast = viewer.window.add_dock_widget(adj_int, name='Contrast')
     cmap = viewer.window.add_dock_widget(apply_cmap, name='Colormap')
