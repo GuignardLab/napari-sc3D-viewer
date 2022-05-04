@@ -35,7 +35,7 @@ To install latest development version :
 
 ## Usage
 So far, you have to figure out by yourself (not for too long hopefully).
-You can find the necessary data [ther](https://github.com/GuignardLab/sc3D/tree/main/data) and [there](https://figshare.com/s/1c29d867bc8b90d754d2).
+You can find the necessary data [there](https://github.com/GuignardLab/sc3D/tree/main/data) and [there](https://figshare.com/s/1c29d867bc8b90d754d2).
 
 Good luck ...
 
