@@ -25,8 +25,8 @@ https://napari.org/plugins/index.html
 
 You can install `napari-sc3D-viewer` via [pip]:
 
-    pip install napari-sc3D-viewer
-
+    pip install .
+(from the correct folder)
 
 
 To install latest development version :
