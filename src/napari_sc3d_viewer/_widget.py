@@ -15,12 +15,14 @@ from pathlib import Path
 from napari import Viewer
 from napari.utils.colormaps import ALL_COLORMAPS
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from matplotlib import cm, colors
 from collections.abc import Iterable
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.widgets import LassoSelector
+from matplotlib.widgets import LassoSelector, TextBox
 from matplotlib.path import Path as PathMPL
+from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 
 class SelectFromCollection:
     """
@@ -366,8 +368,13 @@ def display_embryo(viewer, embryo):
     @magicgui(call_button='Show gene on Umap',
               gene={'label': 'Choose gene', 'value': 'T'},
               tissues={'label': 'Display tissues umap', 'value': False},
+              stats={'widget_type': 'RadioButtons',
+                     'label': 'Stat for choosing distributions',
+                     'choices': ['Standard Deviation', 'Mean', 'Median'],
+                     'value': 'Standard Deviation'},
               result_widget=True)
-    def umap_gene(viewer: Viewer, gene: str, tissues: bool):
+    def umap_gene(viewer: Viewer, gene: str, tissues: bool, stats: str):
+        mpl.rcParams['font.size'] = 6
         def show_cells(event):
             if event:
                 if not hasattr(points.features, 'current_view'):
@@ -377,8 +384,18 @@ def display_embryo(viewer, embryo):
                     points.shown = points.features['current_view']
                     [pt.set_alpha(1) for pt in pts]
                     ax_G.set_title(f'Gene: {gene}')
+                    for i, (ax_hist, (gene_hist, maxi)) in enumerate(ax_hists):
+                        vals = embryo.anndata.raw[:, gene_hist]
+                        ax_hist.clear()
+                        vals = vals.X.toarray()[points.features['current_view'], 0]
+                        hist = ax_hist.hist(vals, bins=50)
+                        if i==2:
+                            ax_hist.set_xlabel('Gene expression')
+                        ax_hist.set_ylabel('#cells')
+                        ax_hist.set_title(f'{gene_hist} distribution')
+                        ax_hist.set_xlim(0, maxi)
                 else:
-                    for i, s in enumerate(selectors):
+                    for s in selectors:
                         if len(s.ind)!=0:
                             indices = corres_to_mask[sorted_vals][s.ind]
                             nb_init = np.sum(points.features['current_view'])
@@ -386,11 +403,39 @@ def display_embryo(viewer, embryo):
                             nb = np.sum(points.shown[indices])
                             ax_G.set_title(f'Gene: {gene} ({nb} cells '
                                            f'({100*nb/nb_init:.1f}% of the initial))')
+                            gene_median = stat_func(embryo.anndata.raw[indices].X.toarray(), axis=0)
+                            top_genes = np.argsort(gene_median)[-3:]
+                            maxi = maximums[top_genes]
+                            top_gene_names = embryo.anndata.raw.var_names[top_genes]
+                            for j, (ax_hist, _) in enumerate(ax_hists):
+                                gene_name = top_gene_names[j]
+                                vals = embryo.anndata.raw[indices, gene_name]
+                                ax_hist.clear()
+                                hist = ax_hist.hist(vals.X.toarray()[:, 0], bins=50)
+                                if tissues:
+                                    ax_hist.set_yticks([])
+                                    ax_hist.set_xlabel('Gene expression')
+                                    if j==0:
+                                        ax_hist.set_ylabel('#cells')
+                                if not tissues:
+                                    ax_hist.set_ylabel('#cells')
+                                    if j==2:
+                                        ax_hist.set_xlabel('Gene expression')
+                                ax_hist.set_title(f'{gene_name} distribution')
+                                ax_hist.set_xlim(0, maxi[j])
                             alpha = np.zeros_like(sorted_vals)+.1
                             alpha[s.ind] = 1
                             [pt.set_alpha(alpha) for pt in pts]
                             s.ind = []
                 points.refresh()
+        if stats == 'Standard Deviation':
+            stat_func = np.std
+        elif stats == 'Mean':
+            stat_func = np.mean
+        elif stats == 'Median':
+            stat_func = np.median
+        else:
+            stat_func = np.max
         points = viewer.layers.selection.active
         cell_list = list(embryo.all_cells)
         if points is None or not gene in embryo.anndata.raw.var_names:
@@ -399,15 +444,37 @@ def display_embryo(viewer, embryo):
             mask = points.features['current_view']
         else:
             mask = points.shown
+
         static_canvas = FigureCanvas()
+        fig = static_canvas.figure
+        fig.set_figwidth(10)
+        fig.set_figheight(8)
+        ax_hists = []
         if tissues:
-            ax_G = static_canvas.figure.add_subplot(2, 1, 1)
-            ax_T = static_canvas.figure.add_subplot(2, 1, 2)
+            gs0 = GridSpec(3, 1, figure=fig)
+            gs00 = GridSpecFromSubplotSpec(1, 2, subplot_spec=gs0[:2, 0])
+            ax_G = fig.add_subplot(gs00[0, 0])
+            ax_T = fig.add_subplot(gs00[0, 1])
+            gs01 = GridSpecFromSubplotSpec(1, 3, subplot_spec=gs0[2, 0])
+            for i in range(3):
+                ax = fig.add_subplot(gs01[0, i])
+                ax.set_xlabel('Gene expression')
+                if i==0:
+                    ax.set_ylabel('#cells')
+                ax_hists.append([ax, gene])
         else:
-            ax_G = static_canvas.figure.add_subplot(1, 1, 1)
+            gs = GridSpec(3, 3, figure=fig)
+            ax_G = fig.add_subplot(gs[:, :2])
+            for i in range(3):
+                ax = fig.add_subplot(gs[i, -1])
+                if i==2:
+                    ax.set_xlabel('Gene expression')
+                ax.set_ylabel('#cells')
+                ax_hists.append([ax, gene])
 
         corres_to_mask = np.where(mask)[0]
         val_g = embryo.anndata.raw[:, gene].X.toarray()[mask, 0]
+        maximums = embryo.anndata.raw.X.toarray()[mask].max(axis=0)
         colors = val_g
         pos_cells = embryo.anndata.obsm['X_umap'][mask, :2]
         sorted_vals = np.argsort(val_g)
@@ -416,15 +483,25 @@ def display_embryo(viewer, embryo):
         pts_G = ax_G.scatter(*pos_cells[sorted_vals, :].T, marker='.',
                               c=colors[sorted_vals])
         pts = [pts_G]
+        gene_median = stat_func(embryo.anndata.raw.X.toarray(), axis=0)
+        top_genes = np.argsort(gene_median)[-3:]
+        maxi = maximums[top_genes]
+        top_gene_names = embryo.anndata.raw.var_names[top_genes]
+        for j, (ax_hist, gene_hist) in enumerate(ax_hists):
+            gene_hist = top_gene_names[j]
+            vals = embryo.anndata.raw[:, gene_hist]
+            ax_hist.hist(vals.X.toarray()[mask, 0], bins=50)
+            ax_hists[j][1] = (gene_hist, maxi[j])
+            ax_hist.set_title(f'{gene_hist} distribution')
+            ax_hist.set_xlim(0, maxi[j])
         pts_G.set_edgecolor('none')
         ax_G.set_xticks([])
         ax_G.set_yticks([])
-        if not tissues:
-            ax_G.set_xlabel('umap 1')
+        ax_G.set_xlabel('umap 1')
         ax_G.set_ylabel('umap 2')
         ax_G.set_title(f'Gene: {gene}')
         ax_G.set_aspect('equal')
-        static_canvas.figure.tight_layout()
+        fig.tight_layout()
         selectors = []
         selectors.append(SelectFromCollection(ax_G, pts_G))
         if tissues:
@@ -437,7 +514,6 @@ def display_embryo(viewer, embryo):
             pts_T.set_edgecolor('none')
             ax_T.set_xticks([])
             ax_T.set_yticks([])
-            ax_T.set_xlabel('umap 1')
             ax_T.set_ylabel('umap 2')
             ax_T.set_title(f'Tissues')
             tissues_found = set([embryo.tissue[c] for c in corres_to_mask])
@@ -448,7 +524,8 @@ def display_embryo(viewer, embryo):
             selectors.append(SelectFromCollection(ax_T, pts_T))
             ax_T.set_aspect('equal')
             ax_T.legend(fontsize='xx-small', frameon=False, shadow=False)
-        static_canvas.figure.canvas.mpl_connect("button_release_event", show_cells)
+
+        fig.canvas.mpl_connect("button_release_event", show_cells)
         viewer.window.add_dock_widget(static_canvas, name='umap', add_vertical_stretch=False)   
 
     viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
