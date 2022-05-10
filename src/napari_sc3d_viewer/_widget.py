@@ -113,6 +113,9 @@ def display_embryo(viewer, embryo):
         41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]
     }
     tissues_to_plot = [18, 21, 30, 31, 34]
+    tissues_to_plot = [t for t in tissues_to_plot if t in embryo.all_tissues]
+    if len(tissues_to_plot)<1:
+        tissues_to_plot = list(embryo.all_tissues)
     cells = sorted(embryo.all_cells)
     positions = [embryo.pos_3D[c] for c in cells]
     shown = [embryo.tissue[c] in tissues_to_plot for c in cells]
@@ -365,20 +368,32 @@ def display_embryo(viewer, embryo):
         return (f'{nb_selected} cells '
                 f'({100*nb_selected/overall:.1f}% of the initial)')
 
+    def get_stats(stat_func, indices, variable_genes):
+        if variable_genes:
+            data = embryo.anndata
+            gene_stat = stat_func(data[indices].X, axis=0)
+        else:
+            data = embryo.anndata.raw
+            gene_stat = stat_func(data[indices].X.toarray(), axis=0)
+
+        top_genes = np.argsort(gene_stat)[-3:]
+        top_gene_names = data.var_names[top_genes]
+        return top_genes, top_gene_names
+
     @magicgui(call_button='Show gene on Umap',
               gene={'label': 'Choose gene', 'value': 'T'},
               tissues={'label': 'Display tissues umap', 'value': False},
+              variable_genes={'label': 'Take only variable genes', 'value': True},
               stats={'widget_type': 'RadioButtons',
                      'label': 'Stat for choosing distributions',
                      'choices': ['Standard Deviation', 'Mean', 'Median'],
                      'value': 'Standard Deviation'},
               result_widget=True)
-    def umap_gene(viewer: Viewer, gene: str, tissues: bool, stats: str):
+    def umap_gene(viewer: Viewer, gene: str, variable_genes: bool,
+                  tissues: bool, stats: str):
         mpl.rcParams['font.size'] = 6
         def show_cells(event):
             if event:
-                if not hasattr(points.features, 'current_view'):
-                    points.features['current_view'] = points.shown.copy()
                 points.shown = np.zeros_like(points.shown, dtype=bool)
                 if sum(len(s.ind) for s in selectors)==0:
                     points.shown = points.features['current_view']
@@ -403,12 +418,11 @@ def display_embryo(viewer, embryo):
                             nb = np.sum(points.shown[indices])
                             ax_G.set_title(f'Gene: {gene} ({nb} cells '
                                            f'({100*nb/nb_init:.1f}% of the initial))')
-                            gene_median = stat_func(embryo.anndata.raw[indices].X.toarray(), axis=0)
-                            top_genes = np.argsort(gene_median)[-3:]
-                            maxi = maximums[top_genes]
-                            top_gene_names = embryo.anndata.raw.var_names[top_genes]
+                            (top_genes,
+                             top_gene_names) = get_stats(stat_func, indices, variable_genes)
                             for j, (ax_hist, _) in enumerate(ax_hists):
                                 gene_name = top_gene_names[j]
+                                gene_id = top_genes[j]
                                 vals = embryo.anndata.raw[indices, gene_name]
                                 ax_hist.clear()
                                 hist = ax_hist.hist(vals.X.toarray()[:, 0], bins=50)
@@ -422,7 +436,7 @@ def display_embryo(viewer, embryo):
                                     if j==2:
                                         ax_hist.set_xlabel('Gene expression')
                                 ax_hist.set_title(f'{gene_name} distribution')
-                                ax_hist.set_xlim(0, maxi[j])
+                                ax_hist.set_xlim(0, maximums[gene_id])
                             alpha = np.zeros_like(sorted_vals)+.1
                             alpha[s.ind] = 1
                             [pt.set_alpha(alpha) for pt in pts]
@@ -436,12 +450,20 @@ def display_embryo(viewer, embryo):
             stat_func = np.median
         else:
             stat_func = np.max
+
         points = viewer.layers.selection.active
+        if points is None:
+            return 'Please select a layer'
+        if not hasattr(points.features, 'current_view'):
+            points.features['current_view'] = points.shown.copy()
         cell_list = list(embryo.all_cells)
         if points is None or not gene in embryo.anndata.raw.var_names:
             return f"'{gene}' not found"
-        if 'current_view' in points.features:
-            mask = points.features['current_view']
+        if 0<len(points.selected_data):
+            mask = np.zeros_like(points.shown)
+            mask[list(points.selected_data)] = True
+            points.shown[~mask] = False
+            points.refresh()
         else:
             mask = points.shown
 
@@ -483,17 +505,16 @@ def display_embryo(viewer, embryo):
         pts_G = ax_G.scatter(*pos_cells[sorted_vals, :].T, marker='.',
                               c=colors[sorted_vals])
         pts = [pts_G]
-        gene_median = stat_func(embryo.anndata.raw.X.toarray(), axis=0)
-        top_genes = np.argsort(gene_median)[-3:]
-        maxi = maximums[top_genes]
-        top_gene_names = embryo.anndata.raw.var_names[top_genes]
-        for j, (ax_hist, gene_hist) in enumerate(ax_hists):
+        (top_genes,
+         top_gene_names) = get_stats(stat_func, points.features['current_view'], variable_genes)
+        for j, (ax_hist, _) in enumerate(ax_hists):
             gene_hist = top_gene_names[j]
+            gene_id = top_genes[j]
             vals = embryo.anndata.raw[:, gene_hist]
             ax_hist.hist(vals.X.toarray()[mask, 0], bins=50)
-            ax_hists[j][1] = (gene_hist, maxi[j])
+            ax_hists[j][1] = (gene_hist, maximums[gene_id])
             ax_hist.set_title(f'{gene_hist} distribution')
-            ax_hist.set_xlim(0, maxi[j])
+            ax_hist.set_xlim(0, maximums[gene_id])
         pts_G.set_edgecolor('none')
         ax_G.set_xticks([])
         ax_G.set_yticks([])
@@ -662,4 +683,5 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
+        self.viewer.window.remove_dock_widget('all')
         loading_embryo(self.viewer)
