@@ -178,22 +178,34 @@ def display_embryo(viewer, embryo):
         points.face_colormap = cmap
         points.refresh()
 
-    @magicgui(call_button='Show gene',
+    @magicgui(call_button='Show gene/metric',
               gene={'label': 'Choose gene', 'value': 'T'},
+              metric={'widget_type': 'ComboBox',
+                      'label': 'or metric',
+                      'choices': ['None']+list(embryo.anndata.obs.columns),
+                      'value': 'None'},
               result_widget=True)
-    def show_gene(viewer: Viewer, gene: str):
+    def show_gene(viewer: Viewer, gene: str, metric: str):
         points = viewer.layers.selection.active
         cell_list = list(embryo.all_cells)
-        if points is None or not gene in embryo.anndata.raw.var_names:
+        if points is None or (metric == 'None' and not gene in embryo.anndata.raw.var_names):
             return f"'{gene}' not found"
+        if metric != 'None':
+            gene = metric
         if gene != points.metadata['gene']:
             if 'current_view' in points.features:
                 mask = points.features['current_view']
             else:
                 mask = points.shown
-            colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
+            if metric == 'None':
+                colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
+            else:
+                colors = embryo.anndata.obs[metric].to_numpy()
+                mask &= ~np.isnan(colors)
+                points.shown = mask
             min_c, max_c = colors[mask].min(), colors[mask].max()
             colors = (colors-min_c)/(max_c-min_c)
+            colors[~mask] = 0
             points.features['gene'] = colors
             points.metadata['gene_min_max'] = min_c, max_c
             points.metadata['gene'] = gene
