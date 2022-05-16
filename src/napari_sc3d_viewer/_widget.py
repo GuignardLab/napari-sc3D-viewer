@@ -8,8 +8,7 @@ Replace code below according to your needs.
 """
 import json
 from sc3D import Embryo
-from qtpy.QtWidgets import QWidget, QPushButton, QHBoxLayout
-
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QFileDialog
 from magicgui import magicgui
 from pathlib import Path
 from napari import Viewer
@@ -20,6 +19,7 @@ from matplotlib import cm, colors
 from collections.abc import Iterable
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.widgets import LassoSelector, TextBox
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
@@ -136,12 +136,13 @@ def display_embryo(viewer, embryo):
                                properties=properties,
                                metadata={'gene': None, '2genes': None}, shown=shown)
 
+    all_tissues = [embryo.corres_tissue.get(t, f'{t}')
+                   for t in embryo.all_tissues]
     @magicgui(call_button='Select tissues',
               tissues={'widget_type': 'Select',
-                         'choices': [embryo.corres_tissue.get(t, f'{t}')
-                                   for t in embryo.all_tissues],
+                         'choices': all_tissues,
                          'value': [embryo.corres_tissue.get(t, f'{t}')
-                                 for t in tissues_to_plot]})
+                                   for t in tissues_to_plot]})
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
@@ -179,30 +180,38 @@ def display_embryo(viewer, embryo):
         points.refresh()
 
     @magicgui(call_button='Show gene/metric',
-              gene={'label': 'Choose gene', 'value': 'T'},
               metric={'widget_type': 'ComboBox',
-                      'label': 'or metric',
-                      'choices': ['None']+list(embryo.anndata.obs.columns),
-                      'value': 'None'},
+                      'label': 'What do you want to display:',
+                      'choices': (['Gene']+
+                                  [c for c in list(embryo.anndata.obs.columns)
+                                   if embryo.anndata.obs[c].dtype in [float, int]]),
+                      'value': 'Gene'},
+              gene={'label': 'Which gene (if necessary)', 'value': 'T'},
               result_widget=True)
-    def show_gene(viewer: Viewer, gene: str, metric: str):
+    def show_gene(viewer: Viewer, metric: str, gene: str):
         points = viewer.layers.selection.active
         cell_list = list(embryo.all_cells)
-        if points is None or (metric == 'None' and not gene in embryo.anndata.raw.var_names):
-            return f"'{gene}' not found"
-        if metric != 'None':
+        is_metric = metric in embryo.anndata.obs.columns
+        if is_metric:
             gene = metric
+        if points is None or (not gene in embryo.anndata.obs.columns and
+                              not gene in embryo.anndata.raw.var_names):
+            return f"'{gene}' not found"
         if gene != points.metadata['gene']:
             if 'current_view' in points.features:
                 mask = points.features['current_view']
             else:
                 mask = points.shown
-            if metric == 'None':
-                colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
-            else:
+            if is_metric:
                 colors = embryo.anndata.obs[metric].to_numpy()
-                mask &= ~np.isnan(colors)
+                try:
+                    mask &= ~np.isnan(colors)
+                except Exception as e:
+                    print(colors.dtype)
+                    return('Failed')
                 points.shown = mask
+            else:
+                colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
             min_c, max_c = colors[mask].min(), colors[mask].max()
             colors = (colors-min_c)/(max_c-min_c)
             colors[~mask] = 0
@@ -481,6 +490,8 @@ def display_embryo(viewer, embryo):
 
         static_canvas = FigureCanvas()
         fig = static_canvas.figure
+        static_canvas.toolbar = NavigationToolbar(static_canvas,
+                                                  static_canvas.parent())
         fig.set_figwidth(10)
         fig.set_figheight(8)
         ax_hists = []
@@ -558,21 +569,87 @@ def display_embryo(viewer, embryo):
             ax_T.set_aspect('equal')
             ax_T.legend(fontsize='xx-small', frameon=False, shadow=False)
 
+        @magicgui(call_button='Save')
+        def saving_fig(viewer: Viewer):
+            file_path = QFileDialog.getSaveFileName()
+            fig.savefig(file_path[0])
+        @magicgui(call_button='Tight Layout')
+        def tight_layout(viewer: Viewer):
+            fig.tight_layout()
         fig.canvas.mpl_connect("button_release_event", show_cells)
-        viewer.window.add_dock_widget(static_canvas, name='umap', add_vertical_stretch=False)   
+        fig_can = viewer.window.add_dock_widget(static_canvas, name='umap')
+        V_box = QWidget()
+        V_box.setLayout(QVBoxLayout())
+        V_box.layout().addWidget(fig_can)
+        V_box.layout().addWidget(static_canvas.toolbar)
+        viewer.window.add_dock_widget(V_box)
 
-    viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
-    viewer.window.add_dock_widget(disp_legend, name='Legend')
-    viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
+    @magicgui(call_button='Compute and show surface',
+              tissue={'widget_type': 'ComboBox',
+                    'label': 'Choose tissue',
+                    'choices': all_tissues,
+                    'value': all_tissues[0]},
+              result_widget=True)
+    def show_surf(viewer: Viewer, tissue: str):
+        try:
+            from pyvista import PolyData
+        except Exception as e:
+            raise(('pyvista should be install to run that command\n'
+                   'Try pip install pyvista to install it'))
+        tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
+        t_id = tissue_to_num[tissue]
+        points = [embryo.pos_3D[c] for c in embryo.cells_from_tissue[t_id]]
+        pd = PolyData(points)
+        mesh = pd.delaunay_3d().extract_surface()
+        face_list = list(mesh.faces.copy())
+        face_sizes = {}
+        faces = []
+        while 0<len(face_list):
+            nb_P = face_list.pop(0)
+            if not nb_P in face_sizes:
+                face_sizes[nb_P] = 0
+            face_sizes[nb_P] += 1
+            curr_face = []
+            for _ in range(nb_P):
+                curr_face.append(face_list.pop(0))
+            faces.append(curr_face)
+        faces = np.array(faces)
+        viewer.add_surface((mesh.points, faces),
+                           colormap=(color_map_tissues.get(t_id, [0, 0, 0]),),
+                           name=tissue, opacity=.6)
+
+    sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
+    legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
+    show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
     g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
-    viewer.window.add_dock_widget(umap_gene, name='umap selection')
+    umap = viewer.window.add_dock_widget(umap_gene, name='umap selection')
     g_th = viewer.window.add_dock_widget(threshold, name='Gene threshold')
     contrast = viewer.window.add_dock_widget(adj_int, name='Contrast')
     cmap = viewer.window.add_dock_widget(apply_cmap, name='Colormap')
+    surf = viewer.window.add_dock_widget(show_surf, name='Surface')
+    
+    tab1 = QTabWidget()
+    tab1.addTab(sel_t, sel_t.name)
+    tab1.addTab(legend, legend.name)
+    tab1.addTab(show_t, show_t.name)
+    tab1.addTab(surf, surf.name)
 
-    viewer.window._qt_window.tabifyDockWidget(contrast, cmap)
-    viewer.window._qt_window.tabifyDockWidget(g1_cmp, g2_cmp)
+    tab2 = QTabWidget()
+    w_box = QWidget()
+    w_box.setLayout(QVBoxLayout())
+    w_box.layout().addWidget(g1_cmp)
+    tab3 = QTabWidget()
+    tab3.addTab(g_th, g_th.name)
+    tab3.addTab(contrast, contrast.name)
+    tab3.addTab(cmap, cmap.name)
+    w_box.layout().addWidget(tab3)
+    tab2.addTab(w_box, 'Single Value')
+    tab2.addTab(g2_cmp, g2_cmp.name)
+    tab2.addTab(umap, 'umap')
+    
+    viewer.window.add_dock_widget(tab1, name='Tissue visualization')
+    viewer.window.add_dock_widget(tab2, name='Metric visualization')
 
     return viewer
 
