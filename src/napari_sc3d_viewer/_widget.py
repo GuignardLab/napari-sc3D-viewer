@@ -8,7 +8,12 @@ Replace code below according to your needs.
 """
 import json
 from sc3D import Embryo
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QFileDialog
+from qtpy.QtWidgets import (QWidget,
+                            QVBoxLayout,
+                            QHBoxLayout,
+                            QTabWidget,
+                            QFileDialog,
+                            QMessageBox)
 from magicgui import magicgui
 from pathlib import Path
 from napari import Viewer
@@ -23,6 +28,15 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.widgets import LassoSelector, TextBox
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+
+def error_points_selection():
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Critical)
+    msg.setText('Point cloud selection error')
+    msg.setInformativeText(('Please select an adequate point cloud\n'
+                            'You can select point clouds on the left hand side of the viewer'))
+    msg.setWindowTitle('Point cloud selection error')
+    msg.exec_()
 
 class SelectFromCollection:
     """
@@ -146,7 +160,8 @@ def display_embryo(viewer, embryo):
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         tissues_to_plot = []
         for t in tissues:
@@ -169,7 +184,8 @@ def display_embryo(viewer, embryo):
                     'choices': ALL_COLORMAPS.keys()})
     def apply_cmap(viewer: Viewer, cmap: str):
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         if len(points.properties) == 0:
             return
@@ -194,8 +210,11 @@ def display_embryo(viewer, embryo):
         is_metric = metric in embryo.anndata.obs.columns
         if is_metric:
             gene = metric
-        if points is None or (not gene in embryo.anndata.obs.columns and
-                              not gene in embryo.anndata.raw.var_names):
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
+            return f'Wrong point selection'
+        if (not gene in embryo.anndata.obs.columns and
+            not gene in embryo.anndata.raw.var_names):
             return f"'{gene}' not found"
         if gene != points.metadata['gene']:
             if 'current_view' in points.features:
@@ -243,7 +262,8 @@ def display_embryo(viewer, embryo):
                        main_bi_color: str):
         points = viewer.layers.selection.active
         cell_list = list(embryo.all_cells)
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return 'A point layout should be selected'
         if not gene1 in embryo.anndata.raw.var_names:
             return f"'{gene1}' not found"
@@ -284,7 +304,8 @@ def display_embryo(viewer, embryo):
     @magicgui(call_button='Color according to cell types')
     def show_tissues(viewer: Viewer):
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         if (points.metadata['gene'] is not None or
             points.metadata['2genes'] is not None):
@@ -298,7 +319,8 @@ def display_embryo(viewer, embryo):
     @magicgui(call_button='Display color legend')
     def disp_legend(viewer: Viewer):
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         with plt.style.context('dark_background'):
             fig, ax = plt.subplots()
@@ -359,7 +381,8 @@ def display_embryo(viewer, embryo):
               max={'widget_type': 'FloatSlider', 'max': 1, 'min': 0, 'label': ''})
     def adj_int(viewer: Viewer, min: float=0, max: float=1):
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         if points.face_color_mode.upper() != 'COLORMAP':
             return
@@ -374,7 +397,8 @@ def display_embryo(viewer, embryo):
               result_widget=True)
     def threshold(viewer: Viewer, min: float=0, max: float=1):
         points = viewer.layers.selection.active
-        if points is None:
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
             return
         if not hasattr(points.features, 'current_view'):
             points.features['current_view'] = points.shown.copy()
@@ -473,8 +497,9 @@ def display_embryo(viewer, embryo):
             stat_func = np.max
 
         points = viewer.layers.selection.active
-        if points is None:
-            return 'Please select a layer'
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection()
+            return 'Please select a point layer'
         if not hasattr(points.features, 'current_view'):
             points.features['current_view'] = points.shown.copy()
         cell_list = list(embryo.all_cells)
@@ -596,6 +621,7 @@ def display_embryo(viewer, embryo):
         except Exception as e:
             raise(('pyvista should be install to run that command\n'
                    'Try pip install pyvista to install it'))
+        curr_layer = viewer.layers.selection.active
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         t_id = tissue_to_num[tissue]
         points = [embryo.pos_3D[c] for c in embryo.cells_from_tissue[t_id]]
@@ -617,6 +643,7 @@ def display_embryo(viewer, embryo):
         viewer.add_surface((mesh.points, faces),
                            colormap=(color_map_tissues.get(t_id, [0, 0, 0]),),
                            name=tissue, opacity=.6)
+        viewer.layers.selection.select_only(curr_layer)
 
     sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
     legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
