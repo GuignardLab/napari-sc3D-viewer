@@ -808,7 +808,7 @@ def loading_embryo(viewer):
     viewer.window.add_dock_widget(registering, name='sc3D registration')
     return viewer, W
 
-class Startsc3D(QTabWidget):
+class Startsc3D(QWidget):
     @magicgui(call_button='Load atlas',
               data_path={'label': 'h5ad file',
                          'widget_type': 'FileEdit',
@@ -857,7 +857,11 @@ class Startsc3D(QTabWidget):
         load = self.viewer.window.add_dock_widget(self.load_file, name='File path')
         self.addTab(load, load.name)
         self.addTab(params, params.name)
-        self.viewer.window.add_dock_widget(tab, name='Atlas loading')
+
+        # self.viewer.window.add_dock_widget(self.load_file, name='Atlas loading')
+
+    def _on_click(self, event):
+        return QFileDialog.getOpenFileName(self, 'h5ad file', '.',"Image files (*.h5ad)")
 
     # your QWidget.__init__ can optionally request the napari viewer instance
     # in one of two ways:
@@ -869,8 +873,8 @@ class Startsc3D(QTabWidget):
         self.tissue_id = 'predicted.id'
         self.pos_reg_id = 'X_spatial_registered'
         self.gene_name_id = 'feature_name'
-        # w = FileEdit(name='Test',
-        #              label='Test2',)
+        w = FileEdit(name='Test',
+                     label='Test2',)
               #    backend_kwargs={data_path:{'label': 'h5ad file',
               #            'widget_type': 'FileEdit',
               #            'value': Path('.').absolute(),#.home(),
@@ -882,13 +886,15 @@ class Startsc3D(QTabWidget):
         # btn = QPushButton("Click me!")
         # btn.clicked.connect(self._on_click)
 
-        # self.setLayout(QHBoxLayout())
-        # self.layout().addWidget(self.get_parameters.native)
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(self.get_parameters.native)
+        self.layout().addWidget(self.load_file.native)
+        self.viewer.window.add_dock_widget(self)
 
         
         # self.loading_embryo()
 
         # tab = QTabWidget()
-        self.addTab(self.load_file.native, 'Test1')
-        self.addTab(self.get_parameters.native, 'Test2')
+        # tab.addTab(self.load_file.native, 'Test1')
+        # tab.addTab(self.get_parameters.native, 'Test2')
         # self.viewer.window.add_dock_widget(tab, name='Atlas loading')
