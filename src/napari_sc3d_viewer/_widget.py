@@ -594,13 +594,6 @@ def display_embryo(viewer, embryo):
             ax_T.set_aspect('equal')
             ax_T.legend(fontsize='xx-small', frameon=False, shadow=False)
 
-        @magicgui(call_button='Save')
-        def saving_fig(viewer: Viewer):
-            file_path = QFileDialog.getSaveFileName()
-            fig.savefig(file_path[0])
-        @magicgui(call_button='Tight Layout')
-        def tight_layout(viewer: Viewer):
-            fig.tight_layout()
         fig.canvas.mpl_connect("button_release_event", show_cells)
         fig_can = viewer.window.add_dock_widget(static_canvas, name='umap')
         V_box = QWidget()
