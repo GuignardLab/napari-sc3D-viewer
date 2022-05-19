@@ -783,11 +783,26 @@ def loading_embryo(viewer):
         else:
             corres_tissues = {}
         embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues)
+                        # tissue_id = tissue_id, pos_reg_id = pos_reg_id, gene_name_id = gene_name_id)
         viewer.window.remove_dock_widget('all')
         display_embryo(viewer, embryo)
 
+    # @magicgui(tissue_id={'label': 'Column name for Tissue id',
+    #                      'value': 'predicted.id'},
+    #           pos_reg_id={'label': 'Column name for 3D position',
+    #                       'value': 'X_spatial_registered'},
+    #           gene_name_id={'label': 'Column name for gene names (empty if not necessary)',
+    #                         'value': 'feature_name'},
+    #           auto_call=True)
+    # def get_parameters(tissue_id: str, pos_reg_id: str, gene_name_id: str):
+    #     print(tissue_id, pos_reg_id, gene_name_id)
+    #     tissue_id = tissue_id
+    #     pos_reg_id = pos_reg_id
+    #     gene_name_id = gene_name_id
+
     viewer.window.remove_dock_widget('all')
     W = viewer.window.add_dock_widget(load_file, name='Atlas loading')
+    # viewer.window.add_dock_widget(get_parameters, name='test')
     viewer.window.add_dock_widget(registering, name='sc3D registration')
     return viewer, W
 
@@ -799,5 +814,5 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        self.viewer.window.remove_dock_widget('all')
+        
         loading_embryo(self.viewer)
