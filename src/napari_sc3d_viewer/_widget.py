@@ -814,5 +814,4 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        
         loading_embryo(self.viewer)
