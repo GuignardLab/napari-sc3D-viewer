@@ -13,7 +13,8 @@ from qtpy.QtWidgets import (QWidget,
                             QHBoxLayout,
                             QTabWidget,
                             QFileDialog,
-                            QMessageBox)
+                            QMessageBox,
+                            QPushButton)
 from magicgui import magicgui
 from pathlib import Path
 from napari import Viewer
@@ -806,7 +807,61 @@ def loading_embryo(viewer):
     viewer.window.add_dock_widget(registering, name='sc3D registration')
     return viewer, W
 
-class Startsc3D(QWidget):
+class Startsc3D(QTabWidget):
+    @magicgui(call_button='Load atlas',
+              data_path={'label': 'h5ad file',
+                         'widget_type': 'FileEdit',
+                         'value': Path('.').absolute(),#.home(),
+                         'filter': '*.h5ad'},
+              tissue_names={'label': 'Tissue name',
+                            'widget_type': 'FileEdit',
+                            'value': Path('.').absolute(),#.home(),
+                            'filter': '*.json'})
+    def load_file(self, data_path: Path,
+                  tissue_names: Path) -> Embryo:
+        tissue_names = Path(tissue_names)
+        if tissue_names.suffix == '.json':
+            with open(tissue_names) as f:
+                corres_tissues = json.load(f)
+                corres_tissues = {k if isinstance(k, int) else eval(k): v
+                                    for k, v in corres_tissues.items()}
+        else:
+            corres_tissues = {}
+        self.embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues,
+                             tissue_id = self.tissue_id,
+                             pos_reg_id = self.pos_reg_id,
+                             gene_name_id = self.gene_name_id)
+        # self.viewer.window.remove_dock_widget('all')
+        print(self.tissue_id, self.pos_reg_id)
+        # display_embryo(viewer, embryo)
+        return
+    
+    @magicgui(tissue_id={'label': 'Column name for Tissue id',
+                         'value': 'predicted.id'},
+              pos_reg_id={'label': 'Column name for 3D position',
+                          'value': 'X_spatial_registered'},
+              gene_name_id={'label': 'Column name for gene names',
+                            'value': 'feature_name'},
+              auto_call=True)
+    def get_parameters(self, tissue_id: str, pos_reg_id: str, gene_name_id: str):
+        self.tissue_id = tissue_id
+        self.pos_reg_id = pos_reg_id
+        self.gene_name_id = gene_name_id
+        print(self.tissue_id)
+        return
+
+    def loading_embryo(self):
+        self.viewer.window.remove_dock_widget('all')
+        params = self.viewer.window.add_dock_widget(self.get_parameters, name='Column names')
+        load = self.viewer.window.add_dock_widget(self.load_file, name='File path')
+        self.addTab(load, load.name)
+        self.addTab(params, params.name)
+
+        # self.viewer.window.add_dock_widget(self.load_file, name='Atlas loading')
+
+    def _on_click(self, event):
+        return QFileDialog.getOpenFileName(self, 'h5ad file', '.',"Image files (*.h5ad)")
+
     # your QWidget.__init__ can optionally request the napari viewer instance
     # in one of two ways:
     # 1. use a parameter called `napari_viewer`, as done here
@@ -814,4 +869,19 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        loading_embryo(self.viewer)
+        self.tissue_id = 'predicted.id'
+        self.pos_reg_id = 'X_spatial_registered'
+        self.gene_name_id = 'feature_name'
+        btn = QPushButton("Click me!")
+        btn.clicked.connect(self._on_click)
+
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(btn)
+
+        
+        # self.loading_embryo()
+
+        # tab = QTabWidget()
+        # tab.addTab(params, params.name)
+        # tab.addTab(load, load.name)
+        # self.viewer.window.add_dock_widget(tab, name='Atlas loading')
