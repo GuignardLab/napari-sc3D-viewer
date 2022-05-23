@@ -632,6 +632,9 @@ def display_embryo(viewer, embryo):
             raise(('pyvista should be install to run that command\n'
                    'Try pip install pyvista to install it'))
         curr_layer = viewer.layers.selection.active
+        for l in viewer.layers:
+            if l.name == tissue:
+                return
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         t_id = tissue_to_num[tissue]
         points = [embryo.pos_3D[c] for c in embryo.cells_from_tissue[t_id]]
@@ -655,9 +658,10 @@ def display_embryo(viewer, embryo):
                            name=tissue, opacity=.6)
         viewer.layers.selection.select_only(curr_layer)
 
-    sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
-    legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
-    show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
+    # sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
+    tissue_container = Container(widgets=[select_tissues, disp_legend, show_tissues], labels=False)
+    # legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
+    # show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
     g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
     umap = viewer.window.add_dock_widget(umap_gene, name='umap selection')
@@ -667,9 +671,9 @@ def display_embryo(viewer, embryo):
     surf = viewer.window.add_dock_widget(show_surf, name='Surface')
     
     tab1 = QTabWidget()
-    tab1.addTab(sel_t, sel_t.name)
-    tab1.addTab(legend, legend.name)
-    tab1.addTab(show_t, show_t.name)
+    tab1.addTab(tissue_container.native, 'Tissues')
+    # tab1.addTab(legend, legend.name)
+    # tab1.addTab(show_t, show_t.name)
     tab1.addTab(surf, surf.name)
 
     tab2 = QTabWidget()
