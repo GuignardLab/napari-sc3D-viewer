@@ -691,7 +691,7 @@ def display_embryo(viewer, embryo):
     return viewer
 
 class Startsc3D(QWidget):
-    def _on_click(self, event):
+    def _on_click(self):
         data_path = self.h5ad_file.line_edit.value
         tissue_names = self.json_file.line_edit.value
         tissue_names = Path(tissue_names)
@@ -708,8 +708,7 @@ class Startsc3D(QWidget):
                              gene_name_id = self.gene_name_id.value,
                              umap_id = self.umap_id.value)
         self.viewer.window.remove_dock_widget('all')
-        display_embryo(self.viewer, self.embryo)
-        return
+        return display_embryo(self.viewer, self.embryo)
 
     def __init__(self, napari_viewer):
         super().__init__()
