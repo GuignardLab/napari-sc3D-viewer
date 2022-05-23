@@ -150,7 +150,6 @@ def display_embryo(viewer, embryo):
         nb_tissues = len(embryo.all_tissues)
         color_map_tissues = {v:cm.tab20(i/nb_tissues)
                                 for i, v in enumerate(embryo.all_tissues)}
-
     colors_rgb = [color_map_tissues.get(embryo.tissue[c], [0, 0, 0]) for c in cells]
 
     viewer.dims.ndisplay=3
@@ -572,7 +571,7 @@ def display_embryo(viewer, embryo):
             ax_hist.hist(safe_toarray(vals.X)[mask, 0], bins=50)
             ax_hists[j][1] = (gene_hist, maximums[gene_id])
             ax_hist.set_title(f'{gene_hist} distribution')
-            ax_hist.set_xlim(0, maximums[gene_id])
+            ax_hist.set_xlim(0, max(.001, maximums[gene_id]))
         pts_G.set_edgecolor('none')
         ax_G.set_xticks([])
         ax_G.set_yticks([])
@@ -665,8 +664,6 @@ def display_embryo(viewer, embryo):
     
     tab1 = QTabWidget()
     tab1.addTab(tissue_container.native, 'Tissues')
-    # tab1.addTab(legend, legend.name)
-    # tab1.addTab(show_t, show_t.name)
     tab1.addTab(surf, surf.name)
 
     tab2 = QTabWidget()
@@ -685,7 +682,7 @@ def display_embryo(viewer, embryo):
     viewer.window.add_dock_widget(tab1, name='Tissue visualization')
     viewer.window.add_dock_widget(tab2, name='Metric visualization')
 
-    return viewer
+    return viewer, tab1, tab2
 
 class Startsc3D(QWidget):
     def _on_click(self):
