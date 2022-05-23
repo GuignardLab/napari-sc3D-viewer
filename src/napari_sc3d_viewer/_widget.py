@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (QWidget,
                             QMessageBox,
                             QPushButton)
 from magicgui import magicgui
-from magicgui.widgets import FileEdit, LineEdit
+from magicgui.widgets import FileEdit, LineEdit, Container
 from pathlib import Path
 from napari import Viewer
 from napari.utils.colormaps import ALL_COLORMAPS
@@ -714,45 +714,28 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        self.tissue_id = LineEdit(label='Column name for Tissue id', value='predicted.id')
-        self.pos_reg_id = LineEdit(label='Column name for 3D position', value='X_spatial_registered')
-        self.gene_name_id = LineEdit(label='Column name for gene names', value='feature_name')
-        self.umap_id = LineEdit(label='Column name for umap coordinates', value='X_umap')
+        self.tissue_id = LineEdit(name='Column name for Tissue id', value='predicted.id')
+        self.pos_reg_id = LineEdit(name='Column name for 3D position', value='X_spatial_registered')
+        self.gene_name_id = LineEdit(name='Column name for gene names', value='feature_name')
+        self.umap_id = LineEdit(name='Column name for umap coordinates', value='X_umap')
+        C1 = Container(widgets=[self.tissue_id, self.pos_reg_id, self.gene_name_id, self.umap_id])
 
         self.h5ad_file = FileEdit(label='h5ad file', value=Path('.').absolute(), filter='*.h5ad')
         self.json_file = FileEdit(label='Tissue names', value=Path('.').absolute(), filter='*.json')
+        C2 = Container(widgets=[self.h5ad_file, self.json_file])
         load_atlas = QPushButton('Load Atlas')
         self.setLayout(QVBoxLayout())
         load = QWidget()
         load.setLayout(QVBoxLayout())
-        load.layout().addWidget(self.h5ad_file.native)
-        load.layout().addWidget(self.json_file.native)
+        load.layout().addWidget(C2.native)
 
         params = QWidget()
         params.setLayout(QVBoxLayout())
-        params.layout().addWidget(self.tissue_id.native)
-        params.layout().addWidget(self.pos_reg_id.native)
-        params.layout().addWidget(self.gene_name_id.native)
+        params.layout().addWidget(C1.native)
         tab = QTabWidget()
         tab.addTab(load, 'Loading files')
         tab.addTab(params, 'Parameters')
         self.layout().addWidget(tab)
         self.layout().addWidget(load_atlas)
+        tab.adjustSize()
         load_atlas.clicked.connect(self._on_click)
-
-
-        # btn = QPushButton("Click me!")
-        # btn.clicked.connect(self._on_click)
-
-        # self.setLayout(QHBoxLayout())
-        # self.layout().addWidget(self.get_parameters.native)
-        # self.layout().addWidget(self.load_file.native)
-        # self.viewer.window.add_dock_widget(self)
-
-        
-        # self.loading_embryo()
-
-        # tab = QTabWidget()
-        # tab.addTab(self.load_file.native, 'Test1')
-        # tab.addTab(self.get_parameters.native, 'Test2')
-        # self.viewer.window.add_dock_widget(tab, name='Atlas loading')
