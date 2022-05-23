@@ -13,8 +13,10 @@ from qtpy.QtWidgets import (QWidget,
                             QHBoxLayout,
                             QTabWidget,
                             QFileDialog,
-                            QMessageBox)
+                            QMessageBox,
+                            QPushButton)
 from magicgui import magicgui
+from magicgui.widgets import FileEdit, LineEdit, Container
 from pathlib import Path
 from napari import Viewer
 from napari.utils.colormaps import ALL_COLORMAPS
@@ -37,6 +39,12 @@ def error_points_selection():
                             'You can select point clouds on the left hand side of the viewer'))
     msg.setWindowTitle('Point cloud selection error')
     msg.exec_()
+
+def safe_toarray(tab):
+    if not isinstance(tab, np.ndarray):
+        return tab.toarray()
+    else:
+        return tab
 
 class SelectFromCollection:
     """
@@ -230,7 +238,7 @@ def display_embryo(viewer, embryo):
                     return('Failed')
                 points.shown = mask
             else:
-                colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
+                colors = safe_toarray(embryo.anndata.raw[:, gene].X)[:, 0]
             min_c, max_c = colors[mask].min(), colors[mask].max()
             colors = (colors-min_c)/(max_c-min_c)
             colors[~mask] = 0
@@ -276,8 +284,8 @@ def display_embryo(viewer, embryo):
                 mask = points.features['current_view']
             else:
                 mask = points.shown
-            colors1 = embryo.anndata.raw[:, gene1].X.toarray()[:, 0]
-            colors2 = embryo.anndata.raw[:, gene2].X.toarray()[:, 0]
+            colors1 = safe_toarray(embryo.anndata.raw[:, gene1].X)[:, 0]
+            colors2 = safe_toarray(embryo.anndata.raw[:, gene2].X)[:, 0]
             C = np.array([colors1, colors2])
             min_g1 = np.percentile(C[0][mask], low_th)
             min_g2 = np.percentile(C[1][mask], low_th)
@@ -419,7 +427,7 @@ def display_embryo(viewer, embryo):
             gene_stat = stat_func(data[indices].X, axis=0)
         else:
             data = embryo.anndata.raw
-            gene_stat = stat_func(data[indices].X.toarray(), axis=0)
+            gene_stat = stat_func(safe_toarray(data[indices].X), axis=0)
 
         top_genes = np.argsort(gene_stat)[-3:]
         top_gene_names = data.var_names[top_genes]
@@ -436,6 +444,8 @@ def display_embryo(viewer, embryo):
               result_widget=True)
     def umap_gene(viewer: Viewer, gene: str, variable_genes: bool,
                   tissues: bool, stats: str):
+        if not hasattr(embryo.anndata, 'obsm') or not embryo.umap_id in embryo.anndata.obsm_keys():
+            return 'No umap coordinates found in the dataset'
         mpl.rcParams['font.size'] = 6
         def show_cells(event):
             if event:
@@ -447,7 +457,7 @@ def display_embryo(viewer, embryo):
                     for i, (ax_hist, (gene_hist, maxi)) in enumerate(ax_hists):
                         vals = embryo.anndata.raw[:, gene_hist]
                         ax_hist.clear()
-                        vals = vals.X.toarray()[points.features['current_view'], 0]
+                        vals = safe_toarray(vals.X)[points.features['current_view'], 0]
                         hist = ax_hist.hist(vals, bins=50)
                         if i==2:
                             ax_hist.set_xlabel('Gene expression')
@@ -470,7 +480,7 @@ def display_embryo(viewer, embryo):
                                 gene_id = top_genes[j]
                                 vals = embryo.anndata.raw[indices, gene_name]
                                 ax_hist.clear()
-                                hist = ax_hist.hist(vals.X.toarray()[:, 0], bins=50)
+                                hist = ax_hist.hist(safe_toarray(vals.X)[:, 0], bins=50)
                                 if tissues:
                                     ax_hist.set_yticks([])
                                     ax_hist.set_xlabel('Gene expression')
@@ -543,10 +553,10 @@ def display_embryo(viewer, embryo):
                 ax_hists.append([ax, gene])
 
         corres_to_mask = np.where(mask)[0]
-        val_g = embryo.anndata.raw[:, gene].X.toarray()[mask, 0]
-        maximums = embryo.anndata.raw.X.toarray()[mask].max(axis=0)
+        val_g = safe_toarray(embryo.anndata.raw[:, gene].X)[mask, 0]
+        maximums = safe_toarray(embryo.anndata.raw.X)[mask].max(axis=0)
         colors = val_g
-        pos_cells = embryo.anndata.obsm['X_umap'][mask, :2]
+        pos_cells = embryo.anndata.obsm[embryo.umap_id][mask, :2]
         sorted_vals = np.argsort(val_g)
         min_c, max_c = colors.min(), colors.max()
         colors = (colors-min_c)/(max_c-min_c)
@@ -559,7 +569,7 @@ def display_embryo(viewer, embryo):
             gene_hist = top_gene_names[j]
             gene_id = top_genes[j]
             vals = embryo.anndata.raw[:, gene_hist]
-            ax_hist.hist(vals.X.toarray()[mask, 0], bins=50)
+            ax_hist.hist(safe_toarray(vals.X)[mask, 0], bins=50)
             ax_hists[j][1] = (gene_hist, maximums[gene_id])
             ax_hist.set_title(f'{gene_hist} distribution')
             ax_hist.set_xlim(0, maximums[gene_id])
@@ -615,6 +625,9 @@ def display_embryo(viewer, embryo):
             raise(('pyvista should be install to run that command\n'
                    'Try pip install pyvista to install it'))
         curr_layer = viewer.layers.selection.active
+        for l in viewer.layers:
+            if l.name == tissue:
+                return
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         t_id = tissue_to_num[tissue]
         points = [embryo.pos_3D[c] for c in embryo.cells_from_tissue[t_id]]
@@ -638,9 +651,10 @@ def display_embryo(viewer, embryo):
                            name=tissue, opacity=.6)
         viewer.layers.selection.select_only(curr_layer)
 
-    sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
-    legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
-    show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
+    # sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
+    tissue_container = Container(widgets=[select_tissues, disp_legend, show_tissues], labels=False)
+    # legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
+    # show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
     g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
     umap = viewer.window.add_dock_widget(umap_gene, name='umap selection')
@@ -650,9 +664,9 @@ def display_embryo(viewer, embryo):
     surf = viewer.window.add_dock_widget(show_surf, name='Surface')
     
     tab1 = QTabWidget()
-    tab1.addTab(sel_t, sel_t.name)
-    tab1.addTab(legend, legend.name)
-    tab1.addTab(show_t, show_t.name)
+    tab1.addTab(tissue_container.native, 'Tissues')
+    # tab1.addTab(legend, legend.name)
+    # tab1.addTab(show_t, show_t.name)
     tab1.addTab(surf, surf.name)
 
     tab2 = QTabWidget()
@@ -673,100 +687,10 @@ def display_embryo(viewer, embryo):
 
     return viewer
 
-@magicgui(do_register={'label': 'Registering data',
-                       'widget_type': 'PushButton',
-                       'value': False},
-          auto_call=True)
-def registering(viewer: Viewer, do_register: bool):
-    @magicgui(call_button='Register the dataset',
-              data_path={'label': 'h5ad file',
-                         'widget_type': 'FileEdit',
-                         'value': Path('.').absolute(),#.home(),
-                         'filter': '*.h5ad'
-                        },
-              tissue_names={'label': 'Tissue name',
-                            'widget_type': 'FileEdit',
-                            'value': Path('.').absolute(),#.home(),
-                            'filter': '*.json'},
-              tissues_to_ignore={'widget_type': 'LiteralEvalLineEdit', 'label': 'Tissue',
-                       'value': '13, 15, 16, 22, 27, 29, 32, 36, 40, 41',
-                       'tooltip': 'List of tissues that are ignored to do coverslip registration'
-                      },
-              nb_begin={'widget_type': 'LiteralEvalLineEdit',
-                        'label': '#First array(s) to ignore',
-                        'value': '0',
-                        'tooltip': '# Coverslips to ignore on the starting side'
-                       },
-              nb_end={'widget_type': 'LiteralEvalLineEdit',
-                      'label': '#Last array(s) to ignore',
-                      'value': '4',
-                      'tooltip': 'Coverslips to ignore on the ending side'
-                     },
-              tissue_weight={'widget_type': 'LiteralEvalLineEdit',
-                             'label': 'Tissue weights',
-                             'value': '{21:2000, 18:2000}',
-                             'tooltip': 'Gives more weight to some tissues to help the alignment'
-                            },
-              xy_resolution={'widget_type': 'LiteralEvalLineEdit',
-                             'label': 'x/y resolution',
-                             'value': '0.6',
-                             'tooltip': 'xy resolution (in um)'
-                            },
-              z_spacing={'widget_type': 'LiteralEvalLineEdit',
-                             'label': 'z spacing',
-                             'value': '30.0',
-                             'tooltip': 'z spacing (in um)'
-                            },
-              th_d={'widget_type': 'LiteralEvalLineEdit',
-                    'label': 'Distance threshold',
-                    'value': '150',
-                    'tooltip': 'Distance max that two beads can be linked together between coverslips'
-                   },
-             outlier_threshold={'widget_type': 'LiteralEvalLineEdit',
-                                'label': 'Threshold for outliers',
-                                'value': '0.6',
-                                'tooltip':
-                                ('Threshold bellow which the beads will be considered noise.\n'
-                                 'Value between 0 (all beads taken) and 1 (almost no beads taken)')
-                               })
-    def register(data_path, tissue_names, tissues_to_ignore, nb_begin, nb_end, tissue_weight,
-                 xy_resolution, z_spacing, th_d, outlier_threshold):
-        if isinstance(tissues_to_ignore, Iterable):
-            tissues_to_ignore = list(tissues_to_ignore)
-        else:
-            tissues_to_ignore = [tissues_to_ignore]
-        tissue_names = Path(tissue_names)
-        if p.suffix == '.json':
-            with open(tissue_names) as f:
-                corres_tissues = json.load(f)
-                corres_tissues = {k if isinstance(k, int) else eval(k): v
-                                    for k, v in corres_tissues.items()}
-        else:
-            corres_tissues = {}
-        embryo = Embryo(data_path, tissues_to_ignore, corres_tissues, tissue_weight=tissue_weight,
-            xy_resolution=xy_resolution, genes_of_interest=[],
-            nb_CS_begin_ignore=nb_begin, nb_CS_end_ignore=nb_end,
-            store_anndata=True, z_space=z_spacing)
-        embryo.removing_spatial_outliers(th=outlier_threshold)
-        embryo.reconstruct_intermediate(embryo, th_d=th_d, genes=[])
-        viewer.window.remove_dock_widget('all')
-        display_embryo(viewer, embryo)
-
-    viewer.window.remove_dock_widget('all')
-    viewer.window.add_dock_widget(register, name='sc3D registration')
-
-def loading_embryo(viewer):
-    @magicgui(call_button='Load atlas',
-              data_path={'label': 'h5ad file',
-                         'widget_type': 'FileEdit',
-                         'value': Path('.').absolute(),#.home(),
-                         'filter': '*.h5ad'},
-              tissue_names={'label': 'Tissue name',
-                            'widget_type': 'FileEdit',
-                            'value': Path('.').absolute(),#.home(),
-                            'filter': '*.json'})
-    def load_file(viewer: Viewer, data_path: Path,
-                  tissue_names: Path) -> Embryo:
+class Startsc3D(QWidget):
+    def _on_click(self):
+        data_path = self.h5ad_file.line_edit.value
+        tissue_names = self.json_file.line_edit.value
         tissue_names = Path(tissue_names)
         if tissue_names.suffix == '.json':
             with open(tissue_names) as f:
@@ -775,22 +699,39 @@ def loading_embryo(viewer):
                                     for k, v in corres_tissues.items()}
         else:
             corres_tissues = {}
-        embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues)
-        viewer.window.remove_dock_widget('all')
-        display_embryo(viewer, embryo)
+        self.embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues,
+                             tissue_id = self.tissue_id.value,
+                             pos_reg_id = self.pos_reg_id.value,
+                             gene_name_id = self.gene_name_id.value,
+                             umap_id = self.umap_id.value)
+        self.viewer.window.remove_dock_widget('all')
+        return display_embryo(self.viewer, self.embryo)
 
-    viewer.window.remove_dock_widget('all')
-    W = viewer.window.add_dock_widget(load_file, name='Atlas loading')
-    viewer.window.add_dock_widget(registering, name='sc3D registration')
-    return viewer, W
-
-class Startsc3D(QWidget):
-    # your QWidget.__init__ can optionally request the napari viewer instance
-    # in one of two ways:
-    # 1. use a parameter called `napari_viewer`, as done here
-    # 2. use a type annotation of 'napari.viewer.Viewer' for any parameter
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        self.viewer.window.remove_dock_widget('all')
-        loading_embryo(self.viewer)
+        self.tissue_id = LineEdit(name='Column name for Tissue id', value='predicted.id')
+        self.pos_reg_id = LineEdit(name='Column name for 3D position', value='X_spatial_registered')
+        self.gene_name_id = LineEdit(name='Column name for gene names', value='feature_name')
+        self.umap_id = LineEdit(name='Column name for umap coordinates', value='X_umap')
+        C1 = Container(widgets=[self.tissue_id, self.pos_reg_id, self.gene_name_id, self.umap_id])
+
+        self.h5ad_file = FileEdit(label='h5ad file', value=Path('.').absolute(), filter='*.h5ad')
+        self.json_file = FileEdit(label='Tissue names', value=Path('.').absolute(), filter='*.json')
+        C2 = Container(widgets=[self.h5ad_file, self.json_file])
+        load_atlas = QPushButton('Load Atlas')
+        self.setLayout(QVBoxLayout())
+        load = QWidget()
+        load.setLayout(QVBoxLayout())
+        load.layout().addWidget(C2.native)
+
+        params = QWidget()
+        params.setLayout(QVBoxLayout())
+        params.layout().addWidget(C1.native)
+        tab = QTabWidget()
+        tab.addTab(load, 'Loading files')
+        tab.addTab(params, 'Parameters')
+        self.layout().addWidget(tab)
+        self.layout().addWidget(load_atlas)
+        tab.adjustSize()
+        load_atlas.clicked.connect(self._on_click)
