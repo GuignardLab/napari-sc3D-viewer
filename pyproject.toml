@@ -2,7 +2,7 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[project.optional-dependencies]
+[napari_sc3d_viewer.optional-dependencies]
 pyvista = ["pyvista"]
 
 [tool.black]
