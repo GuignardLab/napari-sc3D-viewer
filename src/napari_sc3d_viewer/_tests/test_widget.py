@@ -8,8 +8,8 @@ to_test = ['Select tissues',
            'Threshold cells',
            'Show gene on Umap',
            'Save',
-           'Tight Layout',]
-           # 'Compute and show surface']
+           'Tight Layout',
+           'Compute and show surface']
 
 # make_napari_viewer is a pytest fixture that returns a napari viewer object
 # capsys is a pytest fixture that captures stdout and stderr output streams
@@ -26,6 +26,7 @@ def test_example_q_widget(make_napari_viewer, capsys):
     v, t1, t2 = my_widget._on_click()
 
     to_treat = t1.children() + t2.children()
+    # Basically clicking everywhere that is a button ...
     while 0<len(to_treat):
         current = to_treat.pop()
         if hasattr(current, 'click'):
@@ -33,8 +34,3 @@ def test_example_q_widget(make_napari_viewer, capsys):
                 current.click()
             # current.click()
         to_treat += current.children()
-
-    # read captured output and check that it's as we expected
-    captured = capsys.readouterr()
-    print(captured.out)
-    # assert captured.out == "napari has 1 layers\n"

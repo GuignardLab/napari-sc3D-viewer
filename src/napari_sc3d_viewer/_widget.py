@@ -169,8 +169,8 @@ def display_embryo(viewer, embryo):
               tissues={'widget_type': 'Select',
                        'choices': all_tissues,
                        'value': [embryo.corres_tissue.get(t, f'{t}')
-                                  for t in tissues_to_plot],
-                       'label': ''}, labels=False)
+                                  for t in tissues_to_plot]},
+              labels=False)
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
