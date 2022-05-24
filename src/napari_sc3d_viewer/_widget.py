@@ -12,8 +12,6 @@ from qtpy.QtWidgets import (QWidget,
                             QVBoxLayout,
                             QHBoxLayout,
                             QTabWidget,
-                            QFileDialog,
-                            QMessageBox,
                             QPushButton)
 from magicgui import magicgui
 from magicgui.widgets import FileEdit, LineEdit, Container, Label
@@ -23,11 +21,10 @@ from napari.utils.colormaps import ALL_COLORMAPS
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm, colors
-from collections.abc import Iterable
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.widgets import LassoSelector, TextBox
+from matplotlib.widgets import LassoSelector
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 try:
@@ -167,11 +164,14 @@ def display_embryo(viewer, embryo):
 
     all_tissues = [embryo.corres_tissue.get(t, f'{t}')
                    for t in embryo.all_tissues]
+
     @magicgui(call_button='Select tissues',
               tissues={'widget_type': 'Select',
-                         'choices': all_tissues,
-                         'value': [embryo.corres_tissue.get(t, f'{t}')
-                                   for t in tissues_to_plot]})
+                       'choices': all_tissues,
+                        'value': [embryo.corres_tissue.get(t, f'{t}')
+                                  for t in tissues_to_plot],
+                        'label': '',
+                        'name': ''})
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
@@ -653,11 +653,8 @@ def display_embryo(viewer, embryo):
                            name=tissue, opacity=.6)
         viewer.layers.selection.select_only(curr_layer)
 
-    # sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
     display_container = Container(widgets=[disp_legend, show_tissues], layout='horizontal', labels=False)
     tissue_container = Container(widgets=[select_tissues, display_container], labels=False)
-    # legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
-    # show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
     g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
     umap = viewer.window.add_dock_widget(umap_gene, name='umap selection')
@@ -667,10 +664,10 @@ def display_embryo(viewer, embryo):
     if pyvista:
         surf = viewer.window.add_dock_widget(show_surf, name='Surface')
     else:
-        label = Label(value=('Please install pyvista to compute tissue surfaces\n'
-                             'You can run:\n'
-                             'pip install pyvista\nor\nconda install pyvista\n'
-                             'to install it.'))
+        label = Label(value=('\tPlease install pyvista to compute tissue surfaces\n'
+                             '\tYou can run:\n'
+                             '\t`pip install pyvista`\nor\n`conda install pyvista`\n'
+                             '\tto install it.'))
         surf = viewer.window.add_dock_widget(label, name='Surface')
     
     tab1 = QTabWidget()
@@ -697,27 +694,36 @@ def display_embryo(viewer, embryo):
 
 class Startsc3D(QWidget):
     def _on_click(self):
-        data_path = self.h5ad_file.line_edit.value
-        tissue_names = self.json_file.line_edit.value
-        tissue_names = Path(tissue_names)
-        if tissue_names.suffix == '.json':
-            with open(tissue_names) as f:
+        # When clicking on the loading button
+        data_path = Path(self.h5ad_file.line_edit.value)
+        tissue_names = Path(self.json_file.line_edit.value)
+        if not data_path.exists() or data_path.suffix != '.h5ad':
+            self.out_read.value = 'file not found:\n{}'.format(data_path)
+            return
+        if tissue_names.suffix == '.json' and tissue_names.exists():
+            with open(tissue_names, 'r') as f:
                 corres_tissues = json.load(f)
                 corres_tissues = {k if isinstance(k, int) else eval(k): v
                                     for k, v in corres_tissues.items()}
         else:
             corres_tissues = {}
+
+        # Loading embryo as a sc3D object
         self.embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues,
                              tissue_id = self.tissue_id.value,
                              pos_reg_id = self.pos_reg_id.value,
                              gene_name_id = self.gene_name_id.value,
                              umap_id = self.umap_id.value)
+        
+        # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
         return display_embryo(self.viewer, self.embryo)
 
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
+
+        # Parameters information widget        
         tissue_id_label = Label(value='Column name for Tissue id')
         self.tissue_id = LineEdit(value='predicted.id')
         tissue_id = Container(widgets=[tissue_id_label, self.tissue_id], labels=False)
@@ -730,33 +736,35 @@ class Startsc3D(QWidget):
         umap_id_label = Label(value='Column name for umap coordinates')
         self.umap_id = LineEdit(value='X_umap')
         umap_id = Container(widgets=[umap_id_label, self.umap_id], labels=False)
-        C1 = Container(widgets=[tissue_id,
+        params = Container(widgets=[tissue_id,
                                 pos_reg_id,
                                 gene_name_id,
                                 umap_id], labels=False)
+        params.native.layout().addStretch(1)
 
+        # File path widget
         h5ad_label = Label(value='h5ad file')
         self.h5ad_file = FileEdit(value=Path('.').absolute(), filter='*.h5ad')
         h5ad = Container(widgets=[h5ad_label, self.h5ad_file], labels=False)
         json_label = Label(value='Tissue names')
         self.json_file = FileEdit(value=Path('.').absolute(), filter='*.json')
+        self.out_read = Label(value='')
         json = Container(widgets=[json_label, self.json_file], labels=False)
-        C2 = Container(widgets=[h5ad, json], labels=False)
-        # C2 = Container(widgets=[h5ad_label, self.h5ad_file, json_label, self.json_file], labels=False)
+        load = Container(widgets=[h5ad, json, self.out_read], labels=False)
+        load.native.layout().addStretch(1)
+
+        # Tabifying
+        tab = QTabWidget()
+        tab.addTab(load.native, 'Loading files')
+        tab.addTab(params.native, 'Parameters')
+
+        # Loading button
         load_atlas = QPushButton('Load Atlas')
+
+        #Slight improvement of the layout
         layout = QVBoxLayout()
         layout.addStretch(1)
         self.setLayout(layout)
-        load = QWidget()
-        load.setLayout(QVBoxLayout())
-        load.layout().addWidget(C2.native)
-
-        params = QWidget()
-        params.setLayout(QVBoxLayout())
-        params.layout().addWidget(C1.native)
-        tab = QTabWidget()
-        tab.addTab(load, 'Loading files')
-        tab.addTab(params, 'Parameters')
         self.layout().addWidget(tab)
         self.layout().addWidget(load_atlas)
         tab.adjustSize()
