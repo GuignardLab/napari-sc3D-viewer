@@ -2,7 +2,8 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-
+[napari_sc3d_viewer.optional-dependencies]
+pyvista = ["pyvista"]
 
 [tool.black]
 line-length = 79
@@ -10,3 +11,20 @@ line-length = 79
 [tool.isort]
 profile = "black"
 line_length = 79
+
+[tool.bumpver]
+current_version = "1.1.0"
+version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+]
+"src/napari_sc3d_viewer/__init__.py" = [
+	'__version__ = "{version}"'
+]
+
