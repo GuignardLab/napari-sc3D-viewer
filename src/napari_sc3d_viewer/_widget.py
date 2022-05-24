@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (QWidget,
                             QMessageBox,
                             QPushButton)
 from magicgui import magicgui
-from magicgui.widgets import FileEdit, LineEdit, Container
+from magicgui.widgets import FileEdit, LineEdit, Container, Label
 from pathlib import Path
 from napari import Viewer
 from napari.utils.colormaps import ALL_COLORMAPS
@@ -30,6 +30,14 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.widgets import LassoSelector, TextBox
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+try:
+    from pyvista import PolyData
+    pyvista = True
+except Exception as e:
+    print(('pyvista is not installed. No surfaces can be generated\n'
+           'Try pip install pyvista or conda install pyvista to install it'))
+    pyvista = False
+
 
 def error_points_selection():
     msg = QMessageBox()
@@ -618,11 +626,6 @@ def display_embryo(viewer, embryo):
                     'value': all_tissues[0]},
               result_widget=True)
     def show_surf(viewer: Viewer, tissue: str):
-        try:
-            from pyvista import PolyData
-        except Exception as e:
-            raise(('pyvista should be install to run that command\n'
-                   'Try pip install pyvista to install it'))
         curr_layer = viewer.layers.selection.active
         for l in viewer.layers:
             if l.name == tissue:
@@ -651,7 +654,8 @@ def display_embryo(viewer, embryo):
         viewer.layers.selection.select_only(curr_layer)
 
     # sel_t = viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
-    tissue_container = Container(widgets=[select_tissues, disp_legend, show_tissues], labels=False)
+    display_container = Container(widgets=[disp_legend, show_tissues], layout='horizontal', labels=False)
+    tissue_container = Container(widgets=[select_tissues, display_container], labels=False)
     # legend = viewer.window.add_dock_widget(disp_legend, name='Legend')
     # show_t = viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
     g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
@@ -660,7 +664,14 @@ def display_embryo(viewer, embryo):
     g_th = viewer.window.add_dock_widget(threshold, name='Gene threshold')
     contrast = viewer.window.add_dock_widget(adj_int, name='Contrast')
     cmap = viewer.window.add_dock_widget(apply_cmap, name='Colormap')
-    surf = viewer.window.add_dock_widget(show_surf, name='Surface')
+    if pyvista:
+        surf = viewer.window.add_dock_widget(show_surf, name='Surface')
+    else:
+        label = Label(value=('Please install pyvista to compute tissue surfaces\n'
+                             'You can run:\n'
+                             'pip install pyvista\nor\nconda install pyvista\n'
+                             'to install it.'))
+        surf = viewer.window.add_dock_widget(label, name='Surface')
     
     tab1 = QTabWidget()
     tab1.addTab(tissue_container.native, 'Tissues')
@@ -707,17 +718,35 @@ class Startsc3D(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        self.tissue_id = LineEdit(name='Column name for Tissue id', value='predicted.id')
-        self.pos_reg_id = LineEdit(name='Column name for 3D position', value='X_spatial_registered')
-        self.gene_name_id = LineEdit(name='Column name for gene names', value='feature_name')
-        self.umap_id = LineEdit(name='Column name for umap coordinates', value='X_umap')
-        C1 = Container(widgets=[self.tissue_id, self.pos_reg_id, self.gene_name_id, self.umap_id])
+        tissue_id_label = Label(value='Column name for Tissue id')
+        self.tissue_id = LineEdit(value='predicted.id')
+        tissue_id = Container(widgets=[tissue_id_label, self.tissue_id], labels=False)
+        pos_reg_id_label = Label(value='Column name for 3D position')
+        self.pos_reg_id = LineEdit(value='X_spatial_registered')
+        pos_reg_id = Container(widgets=[pos_reg_id_label, self.pos_reg_id], labels=False)
+        gene_name_id_label = Label(value='Column name for gene names')
+        self.gene_name_id = LineEdit(value='feature_name')
+        gene_name_id = Container(widgets=[gene_name_id_label, self.gene_name_id], labels=False)
+        umap_id_label = Label(value='Column name for umap coordinates')
+        self.umap_id = LineEdit(value='X_umap')
+        umap_id = Container(widgets=[umap_id_label, self.umap_id], labels=False)
+        C1 = Container(widgets=[tissue_id,
+                                pos_reg_id,
+                                gene_name_id,
+                                umap_id], labels=False)
 
-        self.h5ad_file = FileEdit(label='h5ad file', value=Path('.').absolute(), filter='*.h5ad')
-        self.json_file = FileEdit(label='Tissue names', value=Path('.').absolute(), filter='*.json')
-        C2 = Container(widgets=[self.h5ad_file, self.json_file])
+        h5ad_label = Label(value='h5ad file')
+        self.h5ad_file = FileEdit(value=Path('.').absolute(), filter='*.h5ad')
+        h5ad = Container(widgets=[h5ad_label, self.h5ad_file], labels=False)
+        json_label = Label(value='Tissue names')
+        self.json_file = FileEdit(value=Path('.').absolute(), filter='*.json')
+        json = Container(widgets=[json_label, self.json_file], labels=False)
+        C2 = Container(widgets=[h5ad, json], labels=False)
+        # C2 = Container(widgets=[h5ad_label, self.h5ad_file, json_label, self.json_file], labels=False)
         load_atlas = QPushButton('Load Atlas')
-        self.setLayout(QVBoxLayout())
+        layout = QVBoxLayout()
+        layout.addStretch(1)
+        self.setLayout(layout)
         load = QWidget()
         load.setLayout(QVBoxLayout())
         load.layout().addWidget(C2.native)
