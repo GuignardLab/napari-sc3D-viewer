@@ -168,10 +168,9 @@ def display_embryo(viewer, embryo):
     @magicgui(call_button='Select tissues',
               tissues={'widget_type': 'Select',
                        'choices': all_tissues,
-                        'value': [embryo.corres_tissue.get(t, f'{t}')
+                       'value': [embryo.corres_tissue.get(t, f'{t}')
                                   for t in tissues_to_plot],
-                        'label': '',
-                        'name': ''})
+                       'label': ''}, labels=False)
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
