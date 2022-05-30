@@ -23,8 +23,10 @@ def test_example_q_widget(make_napari_viewer, capsys):
     # call our widget method
     my_widget.h5ad_file.value = 'test_data/data_test.h5ad'
     my_widget.json_file.value = 'test_data/corresptissues.json'
-    v, t1, t2 = my_widget._on_click()
-
+    out_widget = my_widget._on_click()
+    t1 = out_widget.tab1
+    t2 = out_widget.tab2
+    
     to_treat = t1.children() + t2.children()
     # Basically clicking everywhere that is a button ...
     while 0<len(to_treat):
