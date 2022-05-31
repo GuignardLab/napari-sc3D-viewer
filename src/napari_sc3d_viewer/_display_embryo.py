@@ -342,12 +342,12 @@ class DisplayEmbryo():
                                                 self.surf_method,
                                                 surf_threshold_label, self.surf_threshold,
                                                 surf_run], labels=False)
+            surf_container.native.layout().addStretch(1)
         else:
             surf_container = widgets.Label(value=('\tPlease install pyvista to compute tissue surfaces\n'
                                  '\tYou can run:\n'
                                  '\t`pip install pyvista`\nor\n`conda install pyvista`\n'
                                  '\tto install it.'))
-        surf_container.native.layout().addStretch(1)
         return surf_container
 
     def build_metric_1g_container(self):
