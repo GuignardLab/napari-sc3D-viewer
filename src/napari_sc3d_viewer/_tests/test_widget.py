@@ -2,13 +2,11 @@ from napari_sc3d_viewer import Startsc3D
 import numpy as np
 import inspect
 
-def run_all_functions(displayed_embryo):
-    for name, function in inspect.getmembers(displayed_embryo):
-        if callable(function) and not name.startswith('__'):
-            if 'show' in inspect.getargspec(function).args:
-                function(show=False)
-            else:
-                function()
+try:
+    import pyvista
+    pyvista_install = True
+except:
+    pyvista_install = False
 
 # make_napari_viewer is a pytest fixture that returns a napari viewer object
 # capsys is a pytest fixture that captures stdout and stderr output streams
@@ -23,7 +21,6 @@ def test_example_q_widget(make_napari_viewer, capsys):
     my_widget.h5ad_file.value = 'test_data/data_test.h5ad'
     my_widget.json_file.value = 'test_data/corresptissues.json'
     displayed_embryo = my_widget._on_click()
-    # run_all_functions(displayed_embryo)
     p = displayed_embryo.viewer.layers.selection.active
 
     for points in [None, p]:
@@ -108,7 +105,8 @@ def test_example_q_widget(make_napari_viewer, capsys):
         displayed_embryo.umap_selec.show_cells(None)
         displayed_embryo.umap_selec.show_cells(True)
 
-        displayed_embryo.surf_threshold.value = 0
-        displayed_embryo.show_surf()
-        displayed_embryo.surf_threshold.value = 5
-        displayed_embryo.show_surf()
+        if pyvista_install:
+            displayed_embryo.surf_threshold.value = 0
+            displayed_embryo.show_surf()
+            displayed_embryo.surf_threshold.value = 5
+            displayed_embryo.show_surf()
