@@ -1,0 +1,544 @@
+"""
+This module is an example of a barebones QWidget plugin for napari
+
+It implements the Widget specification.
+see: https://napari.org/plugins/guides.html?#widgets
+
+Replace code below according to your needs.
+"""
+import json
+from qtpy.QtWidgets import QTabWidget
+from magicgui import widgets
+from ._umap_selection import UmapSelection
+from ._utils import error_points_selection, safe_toarray
+from napari.utils.colormaps import ALL_COLORMAPS
+from matplotlib import pyplot as plt
+from matplotlib import cm, colors
+import numpy as np
+try:
+    from pyvista import PolyData
+    pyvista = True
+except Exception as e:
+    print(('pyvista is not installed. No surfaces can be generated\n'
+           'Try pip install pyvista or conda install pyvista to install it'))
+    pyvista = False
+
+class DisplayEmbryo():
+    def disp_legend(self):
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        with plt.style.context('dark_background'):
+            fig, ax = plt.subplots()
+            if (points.metadata['gene'] is None and
+                points.metadata['2genes'] is None):
+                tissues = set([self.embryo.tissue[c] for c in
+                               points.properties['cells'][points.shown]])
+                for t in tissues:
+                    ax.plot([], 'o', c=self.color_map_tissues[t], label=self.embryo.corres_tissue.get(t, f'{t}'))
+                ax.legend()
+                ax.set_axis_off()
+            elif points.metadata['2genes'] is None:
+                if points.face_contrast_limits is None:
+                    m, M = 0, 1
+                else:
+                    m, M = points.face_contrast_limits
+                if points.face_colormap.name in plt.colormaps():
+                    plt.colorbar(cm.ScalarMappable(norm=colors.Normalize(m, M),
+                                                   cmap=points.face_colormap.name))
+                    min_, max_ = points.metadata['gene_min_max']
+                    min_ = (max_-min_)*m+min_
+                    max_ = (max_-min_)*M+min_
+                    plt.colorbar(cm.ScalarMappable(norm=colors.Normalize(min_, max_),
+                                                   cmap=points.face_colormap.name))
+                else:
+                    plt.text(0, 0, ( 'Could not find the colormap '
+                                    f'`{points.face_colormap.name}` '
+                                     'to plot the legend'))
+                ax.set_axis_off()
+            else:
+                scale_square = np.zeros((256, 256, 3))
+                max_g1, max_g2, norm, on_channel = points.metadata['2genes_params']
+                V1 = np.linspace(0, max_g1, 256)
+                V2 = np.linspace(0, max_g2, 256)
+                VS = np.array([V1, V2])
+                VS = norm(VS)
+                VS[VS<0] = 0
+                VS[1<VS] = 1
+                scale_square[...,np.where(1-on_channel)[0][0]] = VS[0]
+                for axes in np.where(on_channel)[0]:
+                    scale_square[...,axes] = VS[1].reshape(-1, 1)
+                ax.imshow(scale_square.swapaxes(1, 0), origin='lower')
+                recap_g1 = lambda x: x*255/max_g1
+                recap_g2 = lambda x: x*255/max_g2
+                vals_g1 = np.arange(np.floor(max_g1)+1, dtype=int)
+                vals_g2 = np.arange(np.floor(max_g2)+1, dtype=int)
+                ax.set_xticks(recap_g1(vals_g1))
+                ax.set_yticks(recap_g2(vals_g2))
+                ax.set_xticklabels(vals_g1)
+                ax.set_yticklabels(vals_g2)
+                ax.set_xlabel(points.metadata['2genes'][1])
+                ax.set_ylabel(points.metadata['2genes'][0])
+            fig.tight_layout()
+            if self.show:
+                plt.show()
+
+    def show_tissues(self):
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        if (points.metadata['gene'] is not None or
+            points.metadata['2genes'] is not None):
+            points.face_color = [self.color_map_tissues[self.embryo.tissue[c]]
+                                 for c in points.properties['cells']]
+            points.face_color_mode = 'direct'
+            points.metadata['gene'] = None
+            points.metadata['2genes'] = None
+        points.refresh()
+
+    def select_tissues(self):
+        tissues = self.select_tissues_choices.value
+        tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        tissues_to_plot = []
+        for t in tissues:
+            if t in tissue_to_num:
+                tissues_to_plot.append(tissue_to_num[t])
+            else:
+                tissues_to_plot.append(int(t))
+        shown = [self.embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
+        points.shown = shown
+        points.features['current_view'] = shown
+        if points.metadata['gene'] is None and points.metadata['2genes'] is None:
+            self.show_tissues()
+        elif points.metadata['2genes'] is None:
+            self.show_gene()#self.viewer, points.metadata['gene'])
+        else:
+            self.show_two_genes()
+
+    def show_surf(self):
+        tissue = self.select_surf.value
+        curr_layer = self.viewer.layers.selection.active
+        if curr_layer is None or curr_layer.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        for l in self.viewer.layers:
+            if l.name == f'{tissue}-{self.surf_threshold.value:.0f}':
+                return
+            if tissue in l.name:
+                self.viewer.layers.remove(l)
+        tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
+        t_id = tissue_to_num[tissue]
+        points = [self.embryo.pos_3D[c] for c in self.embryo.cells_from_tissue[t_id]]
+        points = np.array(points)
+        if self.surf_threshold.value!=0:
+            if self.surf_method.value == 'High distance to center of mass':
+                center_of_mass = np.mean(points, axis=0)
+                dist = np.linalg.norm(points-center_of_mass, axis=1)
+            else:
+                node_ids = list(range(len(points)))
+                gg = self.embryo.build_gabriel_graph(node_ids, points, data_struct='adj-mat', dist=True)
+                dist = gg.mean(axis=0)
+            threshold = np.percentile(dist, 100-self.surf_threshold.value)
+            points = points[dist<threshold]
+        
+        pd = PolyData(points)
+        mesh = pd.delaunay_3d().extract_surface()
+        face_list = list(mesh.faces.copy())
+        face_sizes = {}
+        faces = []
+        while 0<len(face_list):
+            nb_P = face_list.pop(0)
+            if not nb_P in face_sizes:
+                face_sizes[nb_P] = 0
+            face_sizes[nb_P] += 1
+            curr_face = []
+            for _ in range(nb_P):
+                curr_face.append(face_list.pop(0))
+            faces.append(curr_face)
+        faces = np.array(faces)
+        self.viewer.add_surface((mesh.points, faces),
+                           colormap=(self.color_map_tissues.get(t_id, [0, 0, 0]),),
+                           name=f'{tissue}-{self.surf_threshold.value:.0f}', opacity=.6)
+        self.viewer.layers.selection.select_only(curr_layer)
+
+    def show_gene(self):
+        points = self.viewer.layers.selection.active
+        cell_list = list(self.embryo.all_cells)
+        metric = self.metric.value
+        gene = self.gene.value
+        is_metric = metric in self.embryo.anndata.obs.columns
+        if is_metric:
+            gene = metric
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            self.gene_output.value = 'Wrong point selection'
+            return
+        if (not gene in self.embryo.anndata.obs.columns and
+            not gene in self.embryo.anndata.raw.var_names):
+            self.gene_output.value = f"Gene '{gene}' not found"
+            return
+        if gene != points.metadata['gene']:
+            if 'current_view' in points.features:
+                mask = points.features['current_view']
+            else:
+                mask = points.shown
+            if is_metric:
+                colors = self.embryo.anndata.obs[metric].to_numpy()
+                try:
+                    mask &= ~np.isnan(colors)
+                except Exception as e:
+                    print(colors.dtype)
+                    return('Failed')
+                points.shown = mask
+            else:
+                colors = safe_toarray(self.embryo.anndata.raw[:, gene].X)[:, 0]
+            min_c, max_c = colors[mask].min(), colors[mask].max()
+            colors = (colors-min_c)/(max_c-min_c)
+            colors[~mask] = 0
+            points.features['gene'] = colors
+            points.metadata['gene_min_max'] = min_c, max_c
+            points.metadata['gene'] = gene
+        points.metadata['2genes'] = None
+        points.edge_color = 'black'
+        points.face_color = 'gene'
+        points.face_color_mode = 'colormap'
+        points.face_contrast_limits = (0, 1)
+        points.refresh()
+        return f"{points.metadata['gene']} displayed"
+
+    def threshold(self):
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        if not hasattr(points.features, 'current_view'):
+            points.features['current_view'] = points.shown.copy()
+        min = self.threshold_low.value
+        max = self.threshold_high.value
+        if max < min:
+            max, min = min, max
+        mask = (points.features['current_view'] &
+                 (min<=points.features['gene'])&(points.features['gene']<=max))
+        points.shown = (mask)
+        points.refresh()
+        nb_selected = np.sum(mask)
+        overall = np.sum(points.features['current_view'])
+        self.threshold_output.value = (f'{nb_selected} cells '
+                                       f'({100*nb_selected/overall:.1f}% of the initial)')
+        return
+
+    def adj_int(self):
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        if points.face_color_mode.upper() != 'COLORMAP':
+            return
+        min = self.adj_int_low.value
+        max = self.adj_int_high.value
+        if max < min:
+            max, min = min, max
+        points.face_contrast_limits = (min, max)
+        points.refresh()
+
+    def apply_cmap(self):
+        points = self.viewer.layers.selection.active
+        if (points is None or points.as_layer_data_tuple()[-1]!='points'
+            or len(points.properties) == 0):
+            error_points_selection(show=self.show)
+            return
+        if points.face_color_mode.lower() != 'colormap':
+            points.face_color = 'gene'
+            points.face_color_mode = 'colormap'
+        points.face_colormap = self.cmap.value
+        points.refresh()
+
+    def show_two_genes(self):
+        points = self.viewer.layers.selection.active
+        cell_list = list(self.embryo.all_cells)
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
+        gene1 = self.gene1.value
+        gene2 = self.gene2.value
+        low_th = self.threhold_low_2g.value
+        high_th = self.threhold_high_2g.value
+        main_bi_color = self.main_bi_color.value
+
+        if not gene1 in self.embryo.anndata.raw.var_names:
+            self.metric_2g_output.value = f"'{gene1}' not found"
+            return
+        if not gene2 in self.embryo.anndata.raw.var_names:
+            self.metric_2g_output.value = f"'{gene2}' not found"
+            return
+        if (not points.metadata['2genes'] or
+            (gene1, gene2, low_th,
+             high_th, main_bi_color) != points.metadata['2genes']):
+            if 'current_view' in points.features:
+                mask = points.features['current_view']
+            else:
+                mask = points.shown
+            colors1 = safe_toarray(self.embryo.anndata.raw[:, gene1].X)[:, 0]
+            colors2 = safe_toarray(self.embryo.anndata.raw[:, gene2].X)[:, 0]
+            C = np.array([colors1, colors2])
+            min_g1 = np.percentile(C[0][mask], low_th)
+            min_g2 = np.percentile(C[1][mask], low_th)
+            max_g1 = np.percentile(C[0][mask], high_th)
+            max_g2 = np.percentile(C[1][mask], high_th)
+            norm = lambda C: (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
+            V = norm(C)
+            V[V<0] = 0
+            V[1<V] = 1
+            final_C = np.zeros((len(colors1), 3))
+            on_channel = (np.array(['Red', 'Green', 'Blue'])!=main_bi_color).astype(int)
+            final_C[:,0] = V[on_channel[0]]
+            final_C[:,1] = V[on_channel[1]]
+            final_C[:,2] = V[on_channel[2]]
+            points.face_color = final_C
+            points.face_color_mode = 'direct'
+            points.features['2genes'] = colors1
+            points.metadata['2genes'] = (gene1, gene2, low_th, high_th, main_bi_color)
+            points.metadata['2genes_params'] = (max_g1, max_g2, norm, on_channel)
+            points.metadata['gene'] = None
+            points.edge_color = 'black'
+        self.metric_2g_output.value = 'Showing ' + ', '.join(points.metadata['2genes'][:2])
+        return
+
+    def build_tissue_selection(self):
+        # Selecting tissues
+        self.select_tissues_choices = widgets.Select(choices=self.all_tissues,
+                                                     value=[self.embryo.corres_tissue.get(t, f'{t}')
+                                                            for t in self.tissues_to_plot])
+        run_select = widgets.FunctionGui(self.select_tissues, call_button='Select Tissues')
+        # select_tissues = widgets.Container(widgets=[self.select_tissues_choices, run_select], labels=False)
+
+        run_tissues = widgets.FunctionGui(self.show_tissues, call_button='Cell type colouring')
+        
+        # Coloring by tissues
+        run_legend = widgets.FunctionGui(self.disp_legend, call_button='Display legend')
+        
+        select_container = widgets.Container(widgets=[self.select_tissues_choices, run_select], labels=False)
+        display_container = widgets.Container(widgets=[run_tissues, run_legend], layout='horizontal', labels=False)
+        display_container.native.layout().addStretch(1)
+        tissue_container = widgets.Container(widgets=[select_container, display_container], labels=False)
+        tissue_container.native.layout().addStretch(1)
+        return tissue_container
+
+    def build_surf_container(self):
+        if pyvista:
+            surf_label = widgets.Label(value='Choose tissue')
+            self.select_surf = widgets.ComboBox(choices=self.all_tissues, value=self.all_tissues[0])
+            select_surf_label = widgets.Container(widgets=[surf_label, self.select_surf], labels=False)
+            self.surf_method = widgets.RadioButtons(choices=['High distance to center of mass',
+                                                             'High distance to neighbor'],
+                                                    value='High distance to center of mass')
+            surf_threshold_label = widgets.Label(value='Choose the percent of points to remove')
+            self.surf_threshold = widgets.FloatSlider(min=0, max=100, value=0)
+            surf_run = widgets.FunctionGui(self.show_surf, call_button='Compute and show surface')
+            surf_container = widgets.Container(widgets=[select_surf_label,
+                                                self.surf_method,
+                                                surf_threshold_label, self.surf_threshold,
+                                                surf_run], labels=False)
+            surf_container.native.layout().addStretch(1)
+        else:
+            surf_container = widgets.Label(value=('\tPlease install pyvista to compute tissue surfaces\n'
+                                 '\tYou can run:\n'
+                                 '\t`pip install pyvista`\nor\n`conda install pyvista`\n'
+                                 '\tto install it.'))
+        return surf_container
+
+    def build_metric_1g_container(self):
+        metric_label = widgets.Label(value='What to display:')
+        self.metric = widgets.ComboBox(choices=(['Gene']+
+                                                [c for c in list(self.embryo.anndata.obs.columns)
+                                                 if self.embryo.anndata.obs[c].dtype in [float, int]]),
+                                       value='Gene')
+        metric_container = widgets.Container(widgets=[metric_label, self.metric], layout='horizontal', labels=False)
+        gene_label = widgets.Label(value='Which gene (if necessary)')
+        self.gene = widgets.LineEdit(value='T')
+        gene_container = widgets.Container(widgets=[gene_label, self.gene], layout='horizontal', labels=False)
+        metric_1g_run = widgets.FunctionGui(self.show_gene, call_button='Show gene/metric')
+        self.gene_output = widgets.Label(value='')
+
+        self.threshold_low = widgets.FloatSlider(min=0, max=1, value=0)
+        self.threshold_high = widgets.FloatSlider(min=0, max=1, value=1)
+        threshold_run = widgets.FunctionGui(self.threshold, call_button='Apply threshold')
+        self.threshold_output = widgets.Label(value='')
+        threshold = widgets.Container(widgets=[self.threshold_low,
+                                               self.threshold_high,
+                                               threshold_run,
+                                               self.threshold_output], labels=False)
+        threshold.native.layout().addStretch(1)
+        
+        self.adj_int_low = widgets.FloatSlider(min=0, max=1, value=0)
+        self.adj_int_high = widgets.FloatSlider(min=0, max=1, value=1)
+        adj_int_run = widgets.FunctionGui(self.adj_int, call_button='Adjust contrast')
+        adj_int = widgets.Container(widgets=[self.adj_int_low,
+                                             self.adj_int_high,
+                                             adj_int_run], labels=False)
+        adj_int.native.layout().addStretch(1)
+
+        self.cmap = widgets.ComboBox(choices=ALL_COLORMAPS.keys())
+        self.cmap.changed.connect(self.apply_cmap)
+        cmap = widgets.Container(widgets=[self.cmap], labels=False)
+        cmap.native.layout().addStretch(1)
+
+        tab3 = QTabWidget()
+        tab3.addTab(threshold.native, 'Cell Threshold')
+        tab3.addTab(adj_int.native, 'Contrast')
+        tab3.addTab(cmap.native, 'Colormap')
+        tab3.native = tab3
+        tab3.name = ''
+
+        metric_1g_container = widgets.Container(widgets=[metric_container,
+                                                         gene_container,
+                                                         metric_1g_run,
+                                                         self.gene_output,
+                                                         tab3], labels=False)
+        metric_1g_container.native.layout().addStretch(1)
+        return metric_1g_container
+
+    def build_metric_2g_container(self):
+        self.gene1 = widgets.LineEdit(value='T')
+        gene1_label = widgets.Label(value='First gene (main)')
+        gene1_container = widgets.Container(widgets=[gene1_label, self.gene1], layout='horizontal', labels=False)
+        self.gene2 = widgets.LineEdit(value='Sox2')
+        gene2_label = widgets.Label(value='Second gene')
+        gene2_container = widgets.Container(widgets=[gene2_label, self.gene2], layout='horizontal', labels=False)
+
+        self.threhold_low_2g = widgets.Slider(value=2, min=0, max=100)
+        threhold_low_2g_label = widgets.Label(value='Low threshold')
+        threhold_low_2g_container = widgets.Container(widgets=[threhold_low_2g_label, self.threhold_low_2g],
+                                                      layout='horizontal', labels=False)
+
+        self.threhold_high_2g = widgets.Slider(value=98, min=0, max=100, label='High threshold', name='High threshold')
+        threhold_high_2g_label = widgets.Label(value='High threshold')
+        threhold_high_2g_container = widgets.Container(widgets=[threhold_high_2g_label, self.threhold_high_2g],
+                                                      layout='horizontal', labels=False)
+
+        self.main_bi_color = widgets.ComboBox(choices=['Red', 'Green', 'Blue'], value='Red')
+        main_bi_color_label = widgets.Label(value='Main color')
+        main_bi_color_container = widgets.Container(widgets=[main_bi_color_label, self.main_bi_color],
+                                                      layout='horizontal', labels=False)
+        metric_2g_run = widgets.FunctionGui(self.show_two_genes, call_button='Map Colors', labels=False)
+        self.metric_2g_output = widgets.Label(value='')
+
+        metric_2g_container = widgets.Container(widgets=[gene1_container,
+                                                         gene2_container,
+                                                         threhold_low_2g_container,
+                                                         threhold_high_2g_container,
+                                                         main_bi_color_container,
+                                                         metric_2g_run,
+                                                         self.metric_2g_output], labels=False)
+        metric_2g_container.native.layout().addStretch(1)
+        return metric_2g_container
+
+    def build_umap_container(self):
+        gene_label = widgets.Label(value='Choose gene')
+        gene = widgets.LineEdit(value='T')
+        tissues_label = widgets.Label(value='Display tissues umap')
+        tissues = widgets.CheckBox(value=False)
+        variable_genes_label = widgets.Label(value='Take only variable genes')
+        variable_genes = widgets.CheckBox(value=True)
+        stats_label = widgets.Label(value='Stat for\nchoosing distributions')
+        stats = widgets.RadioButtons(choices=['Standard Deviation', 'Mean', 'Median'],
+                                     value='Standard Deviation')
+        self.umap_selec = UmapSelection(self.viewer, self.embryo, gene, tissues, stats,
+                                        variable_genes, self.color_map_tissues, self.tab2)
+        umap_run = widgets.FunctionGui(self.umap_selec.run, call_button='Show gene on Umap', name='')
+
+        gene_container = widgets.Container(widgets=[gene_label, gene], labels=False, layout='horizontal')
+        variable_genes_container = widgets.Container(widgets=[variable_genes_label, variable_genes],
+                                                     labels=False, layout='horizontal')
+        tissues_container = widgets.Container(widgets=[tissues_label, tissues], labels=False, layout='horizontal')
+        stats_container = widgets.Container(widgets=[stats_label, stats], labels=False, layout='horizontal')
+        umap_container = widgets.Container(widgets=[gene_container,
+                                                    tissues_container,
+                                                    variable_genes_container,
+                                                    stats_container, umap_run], labels=False)
+        umap_container.native.layout().addStretch(1)
+        return umap_container
+
+    def __init__(self, viewer, embryo, *, show=False):
+        self.viewer = viewer
+        self.embryo = embryo
+        self.color_map_tissues = {
+            5: [0.7411764705882353, 0.803921568627451, 1.0],
+            6: [0.19607843137254902, 0.35294117647058826, 0.6078431372549019],
+            7: [0.996078431372549, 0.6862745098039216, 0.08627450980392157],
+            9: [0.7686274509803922, 0.27058823529411763, 0.10980392156862745],
+            10: [0.10980392156862745, 1.0, 0.807843137254902],
+            12: [0.7529411764705882, 0.4588235294117647, 0.6509803921568628],
+            13: [0.9647058823529412, 0.13333333333333333, 0.1803921568627451],
+            14: [0.7411764705882353, 0.43529411764705883, 0.6705882352941176],
+            15: [0.9686274509803922, 0.8823529411764706, 0.6274509803921569],
+            16: [1.0, 0.9803921568627451, 0.9803921568627451],
+            18: [0.47058823529411764, 0.16470588235294117, 0.7137254901960784],
+            20: [0.5019607843137255, 0.5019607843137255, 0.5019607843137255],
+            21: [0.9803921568627451, 0.0, 0.5294117647058824],
+            22: [0.5098039215686274, 0.1803921568627451, 0.10980392156862745],
+            23: [0.5215686274509804, 0.4, 0.050980392156862744],
+            24: [0.803921568627451, 0.1607843137254902, 0.5647058823529412],
+            27: [0.6588235294117647, 0.6588235294117647, 0.6588235294117647],
+            29: [0.0, 0.0, 0.5450980392156862],
+            30: [0.5450980392156862, 0.2784313725490196, 0.36470588235294116],
+            31: [1.0, 0.7568627450980392, 0.1450980392156863],
+            32: [0.8705882352941177, 0.6274509803921569, 0.9921568627450981],
+            33: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
+            34: [0.9725490196078431, 0.6313725490196078, 0.6235294117647059],
+            35: [0.7098039215686275, 0.9372549019607843, 0.7098039215686275],
+            36: [0.1803921568627451, 0.8509803921568627, 1.0],
+            39: [0.10980392156862745, 0.5137254901960784, 0.33725490196078434],
+            40: [1.0, 0.6470588235294118, 0.30980392156862746],
+            41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]
+        }
+        self.tissues_to_plot = [18, 21, 30, 31, 34]
+        self.tissues_to_plot = [t for t in self.tissues_to_plot if t in embryo.all_tissues]
+        if len(self.tissues_to_plot)<1:
+            self.tissues_to_plot = list(self.embryo.all_tissues)
+        cells = sorted(self.embryo.all_cells)
+        positions = [self.embryo.pos_3D[c] for c in cells]
+        shown = [self.embryo.tissue[c] in self.tissues_to_plot for c in cells]
+        if not any(shown):
+            shown = [True]*len(cells)
+        properties = {'cells': cells}
+
+        properties['gene'] = [0 for _ in cells]
+        if 0<len(self.embryo.all_tissues.difference(self.color_map_tissues)):
+            nb_tissues = len(self.embryo.all_tissues)
+            self.color_map_tissues = {v:cm.tab20(i/nb_tissues)
+                                    for i, v in enumerate(self.embryo.all_tissues)}
+        colors_rgb = [self.color_map_tissues.get(self.embryo.tissue[c], [0, 0, 0]) for c in cells]
+
+        self.viewer.dims.ndisplay=3
+        points = self.viewer.add_points(positions, face_color=colors_rgb,
+                                        properties=properties,
+                                        metadata={'gene': None, '2genes': None}, shown=shown)
+
+        self.all_tissues = [self.embryo.corres_tissue.get(t, f'{t}')
+                       for t in self.embryo.all_tissues]
+
+        tissue_container = self.build_tissue_selection()
+        surf_container = self.build_surf_container()
+        tab1 = QTabWidget()
+        tab1.addTab(tissue_container.native, 'Tissues')
+        tab1.addTab(surf_container.native, 'Surfaces')
+
+        self.tab2 = QTabWidget()
+        metric_1g_container = self.build_metric_1g_container()
+        metric_2g_container = self.build_metric_2g_container()
+        umap_container = self.build_umap_container()
+        self.tab2.addTab(metric_1g_container.native, 'Single Gene')
+        self.tab2.addTab(metric_2g_container.native, '2 Genes')
+        last_tab = self.tab2.addTab(umap_container.native, 'umap')
+        self.tab2.nb_tabs = last_tab
+
+        self.viewer.window.add_dock_widget(tab1, name='Tissue visualization')
+        self.viewer.window.add_dock_widget(self.tab2, name='Metric visualization')
+        self.show = show
