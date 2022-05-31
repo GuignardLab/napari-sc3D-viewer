@@ -54,9 +54,6 @@ class SelectFromCollection:
         path = PathMPL(verts)
         self.ind = np.nonzero(path.contains_points(self.xys))[0]
         self.ind_mask = path.contains_points(self.xys)
-        # self.fc[:, -1] = self.alpha_other
-        # self.fc[self.ind, -1] = 1
-        # self.collection.set_alpha(self.fc[:, -1])
         self.canvas.draw_idle()
         self.selected_coordinates = self.xys[self.ind].data
 
@@ -103,7 +100,7 @@ class UmapSelection():
                         if i==2:
                             ax_hist.set_xlabel('Gene expression')
                     ax_hist.set_title(f'{gene_hist} distribution')
-                    ax_hist.set_xlim(0, maxi)
+                    ax_hist.set_xlim(0, max(0.01, maxi))
             else:
                 for s in self.selectors:
                     if len(s.ind)!=0:
@@ -131,7 +128,7 @@ class UmapSelection():
                                 if j==2:
                                     ax_hist.set_xlabel('Gene expression')
                             ax_hist.set_title(f'{gene_name} distribution')
-                            ax_hist.set_xlim(0, self.maximums[gene_id])
+                            ax_hist.set_xlim(0, max(0.01, self.maximums[gene_id]))
                         alpha = np.zeros_like(self.sorted_vals)+.1
                         alpha[s.ind] = 1
                         [pt.set_alpha(alpha) for pt in self.pts]

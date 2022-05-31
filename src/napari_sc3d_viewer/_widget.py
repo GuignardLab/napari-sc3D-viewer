@@ -41,12 +41,13 @@ class Startsc3D(QWidget):
         
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
-        return DisplayEmbryo(self.viewer, self.embryo)
+        return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
 
-    def __init__(self, napari_viewer):
+    def __init__(self, napari_viewer, *, show=False):
         super().__init__()
         self.viewer = napari_viewer
-
+        self.show = show
+        
         # Parameters information widget        
         tissue_id_label = widgets.Label(value='Column name for Tissue id')
         self.tissue_id = widgets.LineEdit(value='predicted.id')

@@ -81,8 +81,8 @@ class DisplayEmbryo():
                 ax.set_xlabel(points.metadata['2genes'][1])
                 ax.set_ylabel(points.metadata['2genes'][0])
             fig.tight_layout()
-            plt.show()
-
+            if self.show:
+                plt.show()
 
     def show_tissues(self):
         points = self.viewer.layers.selection.active
@@ -119,7 +119,7 @@ class DisplayEmbryo():
         elif points.metadata['2genes'] is None:
             self.show_gene()#self.viewer, points.metadata['gene'])
         else:
-            self.show_two_genes(self.viewer, *points.metadata['2genes'])
+            self.show_two_genes()
 
     def show_surf(self):
         tissue = self.select_surf.value
@@ -446,12 +446,13 @@ class DisplayEmbryo():
         stats_label = widgets.Label(value='Stat for\nchoosing distributions')
         stats = widgets.RadioButtons(choices=['Standard Deviation', 'Mean', 'Median'],
                                      value='Standard Deviation')
-        umap_selec = UmapSelection(self.viewer, self.embryo, gene, tissues, stats,
-                                   variable_genes, self.color_map_tissues, self.tab2)
-        umap_run = widgets.FunctionGui(umap_selec.run, call_button='Show gene on Umap', name='')
+        self.umap_selec = UmapSelection(self.viewer, self.embryo, gene, tissues, stats,
+                                        variable_genes, self.color_map_tissues, self.tab2)
+        umap_run = widgets.FunctionGui(self.umap_selec.run, call_button='Show gene on Umap', name='')
 
         gene_container = widgets.Container(widgets=[gene_label, gene], labels=False, layout='horizontal')
-        variable_genes_container = widgets.Container(widgets=[variable_genes_label, variable_genes], labels=False, layout='horizontal')
+        variable_genes_container = widgets.Container(widgets=[variable_genes_label, variable_genes],
+                                                     labels=False, layout='horizontal')
         tissues_container = widgets.Container(widgets=[tissues_label, tissues], labels=False, layout='horizontal')
         stats_container = widgets.Container(widgets=[stats_label, stats], labels=False, layout='horizontal')
         umap_container = widgets.Container(widgets=[gene_container,
@@ -461,7 +462,7 @@ class DisplayEmbryo():
         umap_container.native.layout().addStretch(1)
         return umap_container
 
-    def __init__(self, viewer, embryo):
+    def __init__(self, viewer, embryo, *, show=False):
         self.viewer = viewer
         self.embryo = embryo
         self.color_map_tissues = {
@@ -537,3 +538,4 @@ class DisplayEmbryo():
 
         self.viewer.window.add_dock_widget(tab1, name='Tissue visualization')
         self.viewer.window.add_dock_widget(self.tab2, name='Metric visualization')
+        self.show = show
