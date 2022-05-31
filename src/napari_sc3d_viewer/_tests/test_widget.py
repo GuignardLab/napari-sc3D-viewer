@@ -2,6 +2,12 @@ from napari_sc3d_viewer import Startsc3D
 import numpy as np
 import inspect
 
+try:
+    import pyvista
+    pyvista_loaded = True
+except:
+    pyvista_loaded = False
+
 def run_all_functions(displayed_embryo):
     for name, function in inspect.getmembers(displayed_embryo):
         if callable(function) and not name.startswith('__'):
@@ -80,7 +86,8 @@ def test_example_q_widget(make_napari_viewer, capsys):
     displayed_embryo.umap_selec.tissues.stats = 'Mean'
     displayed_embryo.umap_selec.run()
 
-    displayed_embryo.surf_threshold.value = 0
-    displayed_embryo.show_surf()
-    displayed_embryo.surf_threshold.value = 5
-    displayed_embryo.show_surf()
+    if pyvista_loaded:
+        displayed_embryo.surf_threshold.value = 0
+        displayed_embryo.show_surf()
+        displayed_embryo.surf_threshold.value = 5
+        displayed_embryo.show_surf()
