@@ -15,19 +15,13 @@ from napari.utils.colormaps import ALL_COLORMAPS
 from matplotlib import pyplot as plt
 from matplotlib import cm, colors
 import numpy as np
-try:
-    from pyvista import PolyData
-    pyvista = True
-except Exception as e:
-    print(('pyvista is not installed. No surfaces can be generated\n'
-           'Try pip install pyvista or conda install pyvista to install it'))
-    pyvista = False
+from pyvista import PolyData
 
 class DisplayEmbryo():
     def disp_legend(self):
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         with plt.style.context('dark_background'):
             fig, ax = plt.subplots()
@@ -87,7 +81,7 @@ class DisplayEmbryo():
     def show_tissues(self):
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         if (points.metadata['gene'] is not None or
             points.metadata['2genes'] is not None):
@@ -103,7 +97,7 @@ class DisplayEmbryo():
         tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         tissues_to_plot = []
         for t in tissues:
@@ -124,6 +118,9 @@ class DisplayEmbryo():
     def show_surf(self):
         tissue = self.select_surf.value
         curr_layer = self.viewer.layers.selection.active
+        if curr_layer is None or curr_layer.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
         for l in self.viewer.layers:
             if l.name == f'{tissue}-{self.surf_threshold.value:.0f}':
                 return
@@ -173,7 +170,7 @@ class DisplayEmbryo():
         if is_metric:
             gene = metric
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             self.gene_output.value = 'Wrong point selection'
             return
         if (not gene in self.embryo.anndata.obs.columns and
@@ -212,7 +209,7 @@ class DisplayEmbryo():
     def threshold(self):
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         if not hasattr(points.features, 'current_view'):
             points.features['current_view'] = points.shown.copy()
@@ -233,7 +230,7 @@ class DisplayEmbryo():
     def adj_int(self):
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         if points.face_color_mode.upper() != 'COLORMAP':
             return
@@ -248,7 +245,7 @@ class DisplayEmbryo():
         points = self.viewer.layers.selection.active
         if (points is None or points.as_layer_data_tuple()[-1]!='points'
             or len(points.properties) == 0):
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         if points.face_color_mode.lower() != 'colormap':
             points.face_color = 'gene'
@@ -260,7 +257,7 @@ class DisplayEmbryo():
         points = self.viewer.layers.selection.active
         cell_list = list(self.embryo.all_cells)
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection()
+            error_points_selection(show=self.show)
             return
         gene1 = self.gene1.value
         gene2 = self.gene2.value
@@ -328,26 +325,20 @@ class DisplayEmbryo():
         return tissue_container
 
     def build_surf_container(self):
-        if pyvista:
-            surf_label = widgets.Label(value='Choose tissue')
-            self.select_surf = widgets.ComboBox(choices=self.all_tissues, value=self.all_tissues[0])
-            select_surf_label = widgets.Container(widgets=[surf_label, self.select_surf], labels=False)
-            self.surf_method = widgets.RadioButtons(choices=['High distance to center of mass',
-                                                             'High distance to neighbor'],
-                                                    value='High distance to center of mass')
-            surf_threshold_label = widgets.Label(value='Choose the percent of points to remove')
-            self.surf_threshold = widgets.FloatSlider(min=0, max=100, value=0)
-            surf_run = widgets.FunctionGui(self.show_surf, call_button='Compute and show surface')
-            surf_container = widgets.Container(widgets=[select_surf_label,
-                                                self.surf_method,
-                                                surf_threshold_label, self.surf_threshold,
-                                                surf_run], labels=False)
-            surf_container.native.layout().addStretch(1)
-        else:
-            surf_container = widgets.Label(value=('\tPlease install pyvista to compute tissue surfaces\n'
-                                 '\tYou can run:\n'
-                                 '\t`pip install pyvista`\nor\n`conda install pyvista`\n'
-                                 '\tto install it.'))
+        surf_label = widgets.Label(value='Choose tissue')
+        self.select_surf = widgets.ComboBox(choices=self.all_tissues, value=self.all_tissues[0])
+        select_surf_label = widgets.Container(widgets=[surf_label, self.select_surf], labels=False)
+        self.surf_method = widgets.RadioButtons(choices=['High distance to center of mass',
+                                                         'High distance to neighbor'],
+                                                value='High distance to center of mass')
+        surf_threshold_label = widgets.Label(value='Choose the percent of points to remove')
+        self.surf_threshold = widgets.FloatSlider(min=0, max=100, value=0)
+        surf_run = widgets.FunctionGui(self.show_surf, call_button='Compute and show surface')
+        surf_container = widgets.Container(widgets=[select_surf_label,
+                                            self.surf_method,
+                                            surf_threshold_label, self.surf_threshold,
+                                            surf_run], labels=False)
+        surf_container.native.layout().addStretch(1)
         return surf_container
 
     def build_metric_1g_container(self):

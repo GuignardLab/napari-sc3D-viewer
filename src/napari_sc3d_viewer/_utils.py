@@ -7,11 +7,12 @@ def safe_toarray(tab):
     else:
         return tab
 
-def error_points_selection():
+def error_points_selection(show=True):
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
     msg.setText('Point cloud selection error')
     msg.setInformativeText(('Please select an adequate point cloud\n'
                             'You can select point clouds on the left hand side of the viewer'))
     msg.setWindowTitle('Point cloud selection error')
-    msg.exec_()
+    if show:
+        msg.exec_()
