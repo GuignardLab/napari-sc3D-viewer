@@ -102,7 +102,7 @@ def test_example_q_widget(make_napari_viewer, capsys):
         displayed_embryo.umap_selec.tissues.stats = 'Mean'
         displayed_embryo.umap_selec.run()
 
-        displayed_embryo.umap_selec.show_cells(None)
+        displayed_embryo.umap_selec.show_cells(False)
         displayed_embryo.umap_selec.show_cells(True)
 
         if pyvista_install:
