@@ -62,7 +62,7 @@ The json file should look like that:
 If no json file or a wrong json file is given, the original cluster id numbers are used.
 
 The h5ad file should be informed in (1) and the json file in (2).
-![images/1.loading.png]
+![loading image](images/1.loading.png)
 
 ## Contributing
 
