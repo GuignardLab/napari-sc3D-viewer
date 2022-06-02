@@ -64,6 +64,14 @@ If no json file or a wrong json file is given, the original cluster id numbers a
 The h5ad file should be informed in (1) and the json file in (2).
 ![loading image](images/1.loading.png)
 
+To work properly, let `data` be your h5ad datastructure. The viewer is expecting 4 different columns to be present in the h5ad file:
+- the cluster id column (by default named 'predicted.id' that can be accessed as `data.obs['predicted.id']`)
+- the 3D position column (by default named 'X_spatial_registered' that can be accessed as `data.obsm['X_spatial_registered']`)
+- the gene names if not already in the column name (by default named 'feature_name' that can be accessed as `data.var['feature_name']`)
+- umap coordinates (by default named 'X_umap' that can be accessed as `data.obsm['X_umap']`)
+
+If the default column names are not consistent with your dataset, they can be changed in the tab `Parameters` next to the tab `Loading files`
+
 ## Contributing
 
 Contributions are very welcome. Tests can be run with [tox], please ensure
