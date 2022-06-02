@@ -70,7 +70,7 @@ To work properly, let `data` be your h5ad datastructure. The viewer is expecting
 - the gene names if not already in the column name (by default named 'feature_name' that can be accessed as `data.var['feature_name']`)
 - umap coordinates (by default named 'X_umap' that can be accessed as `data.obsm['X_umap']`)
 
-If the default column names are not consistent with your dataset, they can be changed in the tab `Parameters` next to the tab `Loading files`
+If the default column names are not consistent with your dataset, they can be changed in the tab `Parameters` (3) next to the tab `Loading files`
 
 ## Contributing
 
