@@ -1,6 +1,6 @@
 # napari-sc3D-viewer
 
-[![License](https://img.shields.io/pypi/l/napari-sc3D-viewer.svg?color=green)](https://github.com/GuignardLab/napari-sc3D-viewer/raw/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/napari-sc3D-viewer.svg?color=green)](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-sc3D-viewer.svg?color=green)](https://pypi.org/project/napari-sc3D-viewer)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-sc3D-viewer.svg?color=green)](https://python.org)
 [![tests](https://github.com/GuignardLab/napari-sc3D-viewer/workflows/tests/badge.svg)](https://github.com/GuignardLab/napari-sc3D-viewer/actions)
