@@ -7,6 +7,17 @@ def safe_toarray(tab):
     else:
         return tab
 
+
+def error_json_format(show=True):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Critical)
+    msg.setText('json file format error')
+    msg.setInformativeText(('The provided json file did not have the expected format\n'
+                            'Please refer to the documentation'))
+    msg.setWindowTitle('json file format error')
+    if show:
+        msg.exec_()
+
 def error_points_selection(show=True):
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)

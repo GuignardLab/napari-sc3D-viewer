@@ -19,6 +19,8 @@ def test_example_q_widget(make_napari_viewer, capsys):
 
     # call our widget method
     my_widget.h5ad_file.value = 'test_data/data_test.h5ad'
+    my_widget.json_file.value = 'test_data/wrong_format.json'
+    displayed_embryo = my_widget._on_click()
     my_widget.json_file.value = 'test_data/corresptissues.json'
     displayed_embryo = my_widget._on_click()
     p = displayed_embryo.viewer.layers.selection.active

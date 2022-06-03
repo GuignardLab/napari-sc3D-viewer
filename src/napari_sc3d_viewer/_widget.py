@@ -14,6 +14,7 @@ from qtpy.QtWidgets import (QWidget,
                             QPushButton)
 from magicgui import widgets
 from ._display_embryo import DisplayEmbryo
+from ._utils import error_json_format
 from pathlib import Path
 
 class Startsc3D(QWidget):
@@ -27,8 +28,11 @@ class Startsc3D(QWidget):
         if tissue_names.suffix == '.json' and tissue_names.exists():
             with open(tissue_names, 'r') as f:
                 corres_tissues = json.load(f)
-                corres_tissues = {k if isinstance(k, int) else eval(k): v
-                                    for k, v in corres_tissues.items()}
+                try:
+                    corres_tissues = {k if isinstance(k, int) else eval(k): v
+                                        for k, v in corres_tissues.items()}
+                except Exception as e:
+                    error_json_format(show=self.show)
         else:
             corres_tissues = {}
 

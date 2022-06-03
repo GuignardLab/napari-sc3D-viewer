@@ -8,7 +8,7 @@
 [![codecov](https://codecov.io/gh/GuignardLab/napari-sc3D-viewer/branch/main/graph/badge.svg)](https://codecov.io/gh/GuignardLab/napari-sc3D-viewer)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-sc3D-viewer)](https://napari-hub.org/plugins/napari-sc3D-viewer)
 
-A plugin to visualize 3D single cell omics
+A plugin to visualise 3D single cell omics
 
 ----------------------------------
 
@@ -32,7 +32,7 @@ To install the surface computation enabled version it is necessary to use Python
 
     pip install '.[pyvista]'
 from the correct folder or
-    
+
     pip install napari-sc3D-viewer[pyvista]
 
 to install directly from pip or
@@ -43,9 +43,9 @@ to install the latest version
 
 ## Usage
 
-`napari-sc3D-viewer` allows to easily visualize and navigate 3D spatial single-cell transcriptomics using napari.
+`napari-sc3D-viewer` allows users to easily visualise and navigate 3D spatial single-cell transcriptomics using napari.
 
-### Opening your dataset
+### Loading and opening a dataset
 
 <!-- To test your the plugin you can download the following dataset composed of a id to tissue name file located [there](https://github.com/GuignardLab/sc3D/tree/main/data) and a scanpy h5ad dataset [there](https://figshare.com/s/1c29d867bc8b90d754d2). The dataset is from the following publication: [pub] -->
 
@@ -64,13 +64,37 @@ If no json file or a wrong json file is given, the original cluster id numbers a
 The h5ad file should be informed in (1) and the json file in (2).
 ![loading image](images/1.loading.png)
 
-To work properly, let `data` be your h5ad datastructure. The viewer is expecting 4 different columns to be present in the h5ad file:
+To work properly, let `data` be your h5ad data structure. The viewer is expecting 4 different columns to be present in the h5ad file:
 - the cluster id column (by default named 'predicted.id' that can be accessed as `data.obs['predicted.id']`)
 - the 3D position column (by default named 'X_spatial_registered' that can be accessed as `data.obsm['X_spatial_registered']`)
 - the gene names if not already in the column name (by default named 'feature_name' that can be accessed as `data.var['feature_name']`)
 - umap coordinates (by default named 'X_umap' that can be accessed as `data.obsm['X_umap']`)
 
 If the default column names are not consistent with your dataset, they can be changed in the tab `Parameters` (3) next to the tab `Loading files`
+
+Once all the data paths and fields are correctly informed pressing the `Load Atlas` button (4) will load the dataset.
+
+### Exploring a dataset
+
+Once the dataset is loaded there are few options to explore it.
+
+The viewer should look like to the following:
+![viewer](images/2.viewer.png)
+
+It is divided in two main parts, the Tissue visualisation (1) part and the Metric visualisation (2) one.
+Both of them are themselves separated in two and three tabs respectively. All these tabs allow you to visualise and explore the dataset.
+
+The Tissues tab (1.1) allows to select the tissues to display, to show the legend and to colour the cells according to their tissue types.
+
+The Surfaces tab (1.2) allows to construct coarse surfaces of tissues and to display them.
+
+The Single metric tab (2.1) allows to display a metric, whether it is a gene intensity or a numerical metric that is embedded in the visualised dataset. This tab also allows to threshold cells according to the viewed metric, to change the contrast and the colour map.
+
+The 2 Genes (2.2) tab allows to display gene coexpression.
+
+The umap tab (2.3) allows to display the umap of the selected cells and to manually select subcategories of cells to be displayed.
+
+#### Setting the tissues to display.
 
 ## Contributing
 

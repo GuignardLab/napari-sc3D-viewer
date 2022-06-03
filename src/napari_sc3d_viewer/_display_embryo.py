@@ -146,7 +146,7 @@ class DisplayEmbryo():
                 dist = gg.mean(axis=0)
             threshold = np.percentile(dist, 100-self.surf_threshold.value)
             points = points[dist<threshold]
-        
+
         pd = PolyData(points)
         mesh = pd.delaunay_3d().extract_surface()
         face_list = list(mesh.faces.copy())
@@ -319,10 +319,10 @@ class DisplayEmbryo():
         # select_tissues = widgets.Container(widgets=[self.select_tissues_choices, run_select], labels=False)
 
         run_tissues = widgets.FunctionGui(self.show_tissues, call_button='Cell type colouring')
-        
+
         # Coloring by tissues
         run_legend = widgets.FunctionGui(self.disp_legend, call_button='Display legend')
-        
+
         select_container = widgets.Container(widgets=[self.select_tissues_choices, run_select], labels=False)
         display_container = widgets.Container(widgets=[run_tissues, run_legend], layout='horizontal', labels=False)
         display_container.native.layout().addStretch(1)
@@ -375,7 +375,7 @@ class DisplayEmbryo():
                                                threshold_run,
                                                self.threshold_output], labels=False)
         threshold.native.layout().addStretch(1)
-        
+
         self.adj_int_low = widgets.FloatSlider(min=0, max=1, value=0)
         self.adj_int_high = widgets.FloatSlider(min=0, max=1, value=1)
         adj_int_run = widgets.FunctionGui(self.adj_int, call_button='Adjust contrast')
@@ -534,7 +534,7 @@ class DisplayEmbryo():
         metric_1g_container = self.build_metric_1g_container()
         metric_2g_container = self.build_metric_2g_container()
         umap_container = self.build_umap_container()
-        self.tab2.addTab(metric_1g_container.native, 'Single Gene')
+        self.tab2.addTab(metric_1g_container.native, 'Single Metric')
         self.tab2.addTab(metric_2g_container.native, '2 Genes')
         last_tab = self.tab2.addTab(umap_container.native, 'umap')
         self.tab2.nb_tabs = last_tab
