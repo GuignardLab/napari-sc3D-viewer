@@ -94,6 +94,8 @@ The 2 Genes (2.2) tab allows to display gene coexpression.
 
 The umap tab (2.3) allows to display the umap of the selected cells and to manually select subcategories of cells to be displayed.
 
+![viewer](images/3.description.png)
+
 #### Setting the tissues to display.
 
 ## Contributing
