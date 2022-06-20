@@ -118,7 +118,7 @@ That being said, it is not always that easy. You can find below a series of vide
 ![Playing with the umap video](images/umap.gif)
 
 #### Computing and processing the surface
-![Computing and processing the surface video](images/surface.gif)
+![Computing and processing the surface video](images/surfaces.gif)
 
 ## Contributing
 
