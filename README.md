@@ -105,6 +105,20 @@ That being said, it is not always that easy. You can find below a series of vide
 #### Loading data
 ![Loading data video](images/loading.gif)
 
+#### Selecting tissues
+![Selecting tissues video](images/tissue-select.gif)
+
+#### Displaying one gene
+![Displaying one gene video](images/gene1.gif)
+
+#### Displaying two genes co-expression
+![Displaying genes video](images/gene2.gif)
+
+#### Playing with the umap
+![Playing with the umap video](images/umap.gif)
+
+#### Computing and processing the surface
+![Computing and processing the surface video](images/surface.gif)
 
 ## Contributing
 
