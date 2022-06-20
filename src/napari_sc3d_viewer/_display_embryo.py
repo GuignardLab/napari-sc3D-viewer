@@ -57,6 +57,8 @@ class DisplayEmbryo():
         # Get the points and make sure they are correctly selected
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            return
 
         # Not ideally build a matplotlib figure to show the legend
         # For different mode, different figure type.
@@ -117,6 +119,8 @@ class DisplayEmbryo():
                 ax.set_xlabel(points.metadata['2genes'][1])
                 ax.set_ylabel(points.metadata['2genes'][0])
             fig.tight_layout()
+            # if self.show:
+            #     plt.show()
             static_canvas.toolbar = NavigationToolbar(static_canvas,
                                           static_canvas.parent())
             fig_can = self.viewer.window.add_dock_widget(static_canvas, name='Legend')
