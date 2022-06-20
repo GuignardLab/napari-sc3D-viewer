@@ -1,18 +1,17 @@
 """
-This module is an example of a barebones QWidget plugin for napari
-
-It implements the Widget specification.
-see: https://napari.org/plugins/guides.html?#widgets
-
-Replace code below according to your needs.
+This file is subject to the terms and conditions defined in
+file 'LICENCE', which is part of this source code package.
+Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 import json
-from qtpy.QtWidgets import QTabWidget
+from qtpy.QtWidgets import (QTabWidget, QVBoxLayout, QWidget)
 from magicgui import widgets
 from ._umap_selection import UmapSelection
 from ._utils import error_points_selection, safe_toarray
 from napari.utils.colormaps import ALL_COLORMAPS
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib import cm, colors
 import numpy as np
 try:
@@ -24,13 +23,48 @@ except Exception as e:
     pyvista = False
 
 class DisplayEmbryo():
+    """
+    A class to build the plugin to display spatial transcriptomics
+
+    Within this plugin, it is important to understand the way the data
+    is stored. The way the data is stored is a mix of historical reason and
+    a vague effort to make the whole plugin somewhat optimized in time and
+    space (?).
+    Note that it is simpler by the author definition. This definition
+    will likely not be shared by all.
+
+    The structure is the following:
+        - the point layer is the one from napari usually accessed with:
+            `points = self.viewer.layers.selection.active`
+        - there is some metadata information:
+            points.metadata['gene']: gene currently shown, `None` if none is shown
+            points.metadata['2genes']: 2 genes and the parameters of visualization
+                for the 2 genes currently shown, `None` if 2 genes are not shown
+            points.metadata['gene_min_max']: min and max values for the gene shown
+                if a single gene is shown
+            points.metadata['2genes_params']: computed parameters for showing
+                the coexpression of two genes
+        - there is a new feature:
+            points.features['current_view']: refers to the set of cells in the
+                current view, whether they are shown or not. It is important
+                when computing local gene expression
+
+    """
     def disp_legend(self):
+        """
+        Display the legend for the colors displayed
+        """
+        # Get the points and make sure they are correctly selected
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection(show=self.show)
-            return
+
+        # Not ideally build a matplotlib figure to show the legend
+        # For different mode, different figure type.
+        # Not elegant, not efficient, not explained :/
         with plt.style.context('dark_background'):
-            fig, ax = plt.subplots()
+            static_canvas = FigureCanvas()
+            fig = static_canvas.figure
+            ax = fig.add_subplot()
             if (points.metadata['gene'] is None and
                 points.metadata['2genes'] is None):
                 tissues = set([self.embryo.tissue[c] for c in
@@ -45,15 +79,17 @@ class DisplayEmbryo():
                 else:
                     m, M = points.face_contrast_limits
                 if points.face_colormap.name in plt.colormaps():
-                    plt.colorbar(cm.ScalarMappable(norm=colors.Normalize(m, M),
-                                                   cmap=points.face_colormap.name))
+                    fig.colorbar(cm.ScalarMappable(norm=colors.Normalize(m, M),
+                                                   cmap=points.face_colormap.name),
+                                 label=points.metadata['gene'] + ', normalized values')
                     min_, max_ = points.metadata['gene_min_max']
                     min_ = (max_-min_)*m+min_
                     max_ = (max_-min_)*M+min_
-                    plt.colorbar(cm.ScalarMappable(norm=colors.Normalize(min_, max_),
-                                                   cmap=points.face_colormap.name))
+                    fig.colorbar(cm.ScalarMappable(norm=colors.Normalize(min_, max_),
+                                                   cmap=points.face_colormap.name),
+                                 label=points.metadata['gene'] + ', original values')
                 else:
-                    plt.text(0, 0, ( 'Could not find the colormap '
+                    fig.text(0, 0, ( 'Could not find the colormap '
                                     f'`{points.face_colormap.name}` '
                                      'to plot the legend'))
                 ax.set_axis_off()
@@ -81,14 +117,27 @@ class DisplayEmbryo():
                 ax.set_xlabel(points.metadata['2genes'][1])
                 ax.set_ylabel(points.metadata['2genes'][0])
             fig.tight_layout()
-            if self.show:
-                plt.show()
+            static_canvas.toolbar = NavigationToolbar(static_canvas,
+                                          static_canvas.parent())
+            fig_can = self.viewer.window.add_dock_widget(static_canvas, name='Legend')
+            V_box = QWidget()
+            V_box.setLayout(QVBoxLayout())
+            V_box.layout().addWidget(fig_can)
+            V_box.layout().addWidget(static_canvas.toolbar)
+            self.tab1.removeTab(self.tab1.nb_tabs+1)
+            self.tab1.addTab(V_box, 'Legend')
 
     def show_tissues(self):
+        """
+        Color cells according to the tissue they belong to
+        """
+        # Get the points and make sure they are correctly selected
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
             return
+
+        # If necessary, change the color of the cells
         if (points.metadata['gene'] is not None or
             points.metadata['2genes'] is not None):
             points.face_color = [self.color_map_tissues[self.embryo.tissue[c]]
@@ -99,12 +148,19 @@ class DisplayEmbryo():
         points.refresh()
 
     def select_tissues(self):
-        tissues = self.select_tissues_choices.value
-        tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
+        """
+        Display a set of tissues according to user selection
+        """
+        # Get the points and make sure they are correctly selected
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
             return
+
+        # Get the cells that belong to the tissue selected and display them
+        # The cells from the selected tissue define the `current_view`
+        tissues = self.select_tissues_choices.value
+        tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
         tissues_to_plot = []
         for t in tissues:
             if t in tissue_to_num:
@@ -114,28 +170,40 @@ class DisplayEmbryo():
         shown = [self.embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
         points.shown = shown
         points.features['current_view'] = shown
+
+        # Rerun the correct display function with the new set of cells
         if points.metadata['gene'] is None and points.metadata['2genes'] is None:
             self.show_tissues()
         elif points.metadata['2genes'] is None:
-            self.show_gene()#self.viewer, points.metadata['gene'])
+            self.show_gene()
         else:
             self.show_two_genes()
 
     def show_surf(self):
-        tissue = self.select_surf.value
+        """
+        Compute and show the surface of a given tissue
+        """
+        # Get the points and make sure they exist
         curr_layer = self.viewer.layers.selection.active
         if curr_layer is None or curr_layer.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
             return
+
+        # Makes sure to not recompute surfaces
+        tissue = self.select_surf.value
         for l in self.viewer.layers:
             if l.name == f'{tissue}-{self.surf_threshold.value:.0f}':
                 return
             if tissue in l.name:
                 self.viewer.layers.remove(l)
+
+        # Get the 3D position of the cells of the tissue
         tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
         t_id = tissue_to_num[tissue]
         points = [self.embryo.pos_3D[c] for c in self.embryo.cells_from_tissue[t_id]]
         points = np.array(points)
+
+        # Apply the threshold to discard some cells
         if self.surf_threshold.value!=0:
             if self.surf_method.value == 'High distance to center of mass':
                 center_of_mass = np.mean(points, axis=0)
@@ -147,6 +215,7 @@ class DisplayEmbryo():
             threshold = np.percentile(dist, 100-self.surf_threshold.value)
             points = points[dist<threshold]
 
+        # Build and display the surface
         pd = PolyData(points)
         mesh = pd.delaunay_3d().extract_surface()
         face_list = list(mesh.faces.copy())
@@ -168,26 +237,37 @@ class DisplayEmbryo():
         self.viewer.layers.selection.select_only(curr_layer)
 
     def show_gene(self):
+        """
+        Colour cells according to their gene expression
+        """
+        # Get the points and check that we actually got them
         points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1]!='points':
+            error_points_selection(show=self.show)
+            self.gene_output.value = 'Wrong point selection'
+            return
+
+        # Get the cells, the different parameters and makes sure that they
+        # make sense
         cell_list = list(self.embryo.all_cells)
         metric = self.metric.value
         gene = self.gene.value
         is_metric = metric in self.embryo.anndata.obs.columns
         if is_metric:
             gene = metric
-        if points is None or points.as_layer_data_tuple()[-1]!='points':
-            error_points_selection(show=self.show)
-            self.gene_output.value = 'Wrong point selection'
-            return
         if (not gene in self.embryo.anndata.obs.columns and
             not gene in self.embryo.anndata.raw.var_names):
             self.gene_output.value = f"Gene '{gene}' not found"
             return
+
+        # Makes sure that we are not recomputing already computed datas
         if gene != points.metadata['gene']:
             if 'current_view' in points.features:
                 mask = points.features['current_view']
             else:
                 mask = points.shown
+
+            # Try to build the colors from the quantitative data asked
             if is_metric:
                 colors = self.embryo.anndata.obs[metric].to_numpy()
                 try:
@@ -198,6 +278,8 @@ class DisplayEmbryo():
                 points.shown = mask
             else:
                 colors = safe_toarray(self.embryo.anndata.raw[:, gene].X)[:, 0]
+
+            # Normalise the data
             min_c, max_c = colors[mask].min(), colors[mask].max()
             colors = (colors-min_c)/(max_c-min_c)
             colors[~mask] = 0
@@ -213,12 +295,20 @@ class DisplayEmbryo():
         return f"{points.metadata['gene']} displayed"
 
     def threshold(self):
+        """
+        Remove from the view the cells below and above a low and high threshold
+        """
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
             return
+
+        # Store the current view for rapid switch between thresholded and not
         if not hasattr(points.features, 'current_view'):
             points.features['current_view'] = points.shown.copy()
+
+
+        # Compute and apply the threshold
         min = self.threshold_low.value
         max = self.threshold_high.value
         if max < min:
@@ -234,6 +324,9 @@ class DisplayEmbryo():
         return
 
     def adj_int(self):
+        """
+        Adjust the intensity for gene expression colouring
+        """
         points = self.viewer.layers.selection.active
         if points is None or points.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
@@ -248,6 +341,10 @@ class DisplayEmbryo():
         points.refresh()
 
     def apply_cmap(self):
+        """
+        Apply a color map to cells
+        """
+        # Pretty straight forward (?)
         points = self.viewer.layers.selection.active
         if (points is None or points.as_layer_data_tuple()[-1]!='points'
             or len(points.properties) == 0):
@@ -260,11 +357,19 @@ class DisplayEmbryo():
         points.refresh()
 
     def show_two_genes(self):
+        """
+        Function that show two genes
+        """
+        # Get the layer with the points, makes sure it exists and is one
+        # Point layer indeed
         points = self.viewer.layers.selection.active
-        cell_list = list(self.embryo.all_cells)
         if points is None or points.as_layer_data_tuple()[-1]!='points':
             error_points_selection(show=self.show)
             return
+
+        # Get the list of cells (it is initially a set)
+        # and all the parameters and makes sure that they make sense
+        cell_list = list(self.embryo.all_cells)
         gene1 = self.gene1.value
         gene2 = self.gene2.value
         low_th = self.threhold_low_2g.value
@@ -277,6 +382,9 @@ class DisplayEmbryo():
         if not gene2 in self.embryo.anndata.raw.var_names:
             self.metric_2g_output.value = f"'{gene2}' not found"
             return
+
+        # Makes sure not to reprocess already processed data and process them
+        # if necessary
         if (not points.metadata['2genes'] or
             (gene1, gene2, low_th,
              high_th, main_bi_color) != points.metadata['2genes']):
@@ -284,22 +392,32 @@ class DisplayEmbryo():
                 mask = points.features['current_view']
             else:
                 mask = points.shown
+
+            # Gets the values for the 1st and 2nd genes as ndarrays
             colors1 = safe_toarray(self.embryo.anndata.raw[:, gene1].X)[:, 0]
             colors2 = safe_toarray(self.embryo.anndata.raw[:, gene2].X)[:, 0]
             C = np.array([colors1, colors2])
+
+            # Get the threshold value for the gene activities
             min_g1 = np.percentile(C[0][mask], low_th)
             min_g2 = np.percentile(C[1][mask], low_th)
             max_g1 = np.percentile(C[0][mask], high_th)
             max_g2 = np.percentile(C[1][mask], high_th)
+
+            # Normalize and threshold the genes from 0 to 1
             norm = lambda C: (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
             V = norm(C)
             V[V<0] = 0
             V[1<V] = 1
+
+            # Build the RGB array
             final_C = np.zeros((len(colors1), 3))
             on_channel = (np.array(['Red', 'Green', 'Blue'])!=main_bi_color).astype(int)
             final_C[:,0] = V[on_channel[0]]
             final_C[:,1] = V[on_channel[1]]
             final_C[:,2] = V[on_channel[2]]
+
+            # Assign the color to the cells
             points.face_color = final_C
             points.face_color_mode = 'direct'
             points.features['2genes'] = colors1
@@ -311,13 +429,14 @@ class DisplayEmbryo():
         return
 
     def build_tissue_selection(self):
+        """
+        Function that builds the qt container for the selection of the tissues
+        """
         # Selecting tissues
         self.select_tissues_choices = widgets.Select(choices=self.all_tissues,
                                                      value=[self.embryo.corres_tissue.get(t, f'{t}')
                                                             for t in self.tissues_to_plot])
         run_select = widgets.FunctionGui(self.select_tissues, call_button='Select Tissues')
-        # select_tissues = widgets.Container(widgets=[self.select_tissues_choices, run_select], labels=False)
-
         run_tissues = widgets.FunctionGui(self.show_tissues, call_button='Cell type colouring')
 
         # Coloring by tissues
@@ -331,16 +450,26 @@ class DisplayEmbryo():
         return tissue_container
 
     def build_surf_container(self):
+        """
+        Function that builds the qt container to build the surfaces
+        """
+
+        # Check whether pyvista is installed
         if pyvista:
+            # Tissue choice
             surf_label = widgets.Label(value='Choose tissue')
             self.select_surf = widgets.ComboBox(choices=self.all_tissues, value=self.all_tissues[0])
             select_surf_label = widgets.Container(widgets=[surf_label, self.select_surf], labels=False)
+
+            # Choice for the pruning method and its parameter
             self.surf_method = widgets.RadioButtons(choices=['High distance to center of mass',
                                                              'High distance to neighbor'],
                                                     value='High distance to center of mass')
             surf_threshold_label = widgets.Label(value='Choose the percent of points to remove')
             self.surf_threshold = widgets.FloatSlider(min=0, max=100, value=0)
             surf_run = widgets.FunctionGui(self.show_surf, call_button='Compute and show surface')
+
+            # Building the container
             surf_container = widgets.Container(widgets=[select_surf_label,
                                                 self.surf_method,
                                                 surf_threshold_label, self.surf_threshold,
@@ -354,18 +483,26 @@ class DisplayEmbryo():
         return surf_container
 
     def build_metric_1g_container(self):
+        """
+        Function that builds the qt container to display gene expression
+        """
+
+        # Choice of the metric to display
         metric_label = widgets.Label(value='What to display:')
         self.metric = widgets.ComboBox(choices=(['Gene']+
                                                 [c for c in list(self.embryo.anndata.obs.columns)
                                                  if self.embryo.anndata.obs[c].dtype in [float, int]]),
                                        value='Gene')
         metric_container = widgets.Container(widgets=[metric_label, self.metric], layout='horizontal', labels=False)
+
+        # Choice of the gene to display
         gene_label = widgets.Label(value='Which gene (if necessary)')
         self.gene = widgets.LineEdit(value='T')
         gene_container = widgets.Container(widgets=[gene_label, self.gene], layout='horizontal', labels=False)
         metric_1g_run = widgets.FunctionGui(self.show_gene, call_button='Show gene/metric')
         self.gene_output = widgets.Label(value='')
 
+        # Choice of the low and high threshold
         self.threshold_low = widgets.FloatSlider(min=0, max=1, value=0)
         self.threshold_high = widgets.FloatSlider(min=0, max=1, value=1)
         threshold_run = widgets.FunctionGui(self.threshold, call_button='Apply threshold')
@@ -376,6 +513,7 @@ class DisplayEmbryo():
                                                self.threshold_output], labels=False)
         threshold.native.layout().addStretch(1)
 
+        # Choice for the intensity thresholds
         self.adj_int_low = widgets.FloatSlider(min=0, max=1, value=0)
         self.adj_int_high = widgets.FloatSlider(min=0, max=1, value=1)
         adj_int_run = widgets.FunctionGui(self.adj_int, call_button='Adjust contrast')
@@ -384,11 +522,13 @@ class DisplayEmbryo():
                                              adj_int_run], labels=False)
         adj_int.native.layout().addStretch(1)
 
+        # Choice for the color map
         self.cmap = widgets.ComboBox(choices=ALL_COLORMAPS.keys())
         self.cmap.changed.connect(self.apply_cmap)
         cmap = widgets.Container(widgets=[self.cmap], labels=False)
         cmap.native.layout().addStretch(1)
 
+        # Building the container
         tab3 = QTabWidget()
         tab3.addTab(threshold.native, 'Cell Threshold')
         tab3.addTab(adj_int.native, 'Contrast')
@@ -405,30 +545,42 @@ class DisplayEmbryo():
         return metric_1g_container
 
     def build_metric_2g_container(self):
+        """
+        Function that builds the qt container to display gene co-expression
+        """
+        # Choice of the first gene
         self.gene1 = widgets.LineEdit(value='T')
         gene1_label = widgets.Label(value='First gene (main)')
         gene1_container = widgets.Container(widgets=[gene1_label, self.gene1], layout='horizontal', labels=False)
+
+        # Choice of the second gene
         self.gene2 = widgets.LineEdit(value='Sox2')
         gene2_label = widgets.Label(value='Second gene')
         gene2_container = widgets.Container(widgets=[gene2_label, self.gene2], layout='horizontal', labels=False)
 
+        # Choice of the value for the low threshold
         self.threhold_low_2g = widgets.Slider(value=2, min=0, max=100)
         threhold_low_2g_label = widgets.Label(value='Low threshold')
         threhold_low_2g_container = widgets.Container(widgets=[threhold_low_2g_label, self.threhold_low_2g],
                                                       layout='horizontal', labels=False)
 
+        # Choice for the high threshold
         self.threhold_high_2g = widgets.Slider(value=98, min=0, max=100, label='High threshold', name='High threshold')
         threhold_high_2g_label = widgets.Label(value='High threshold')
         threhold_high_2g_container = widgets.Container(widgets=[threhold_high_2g_label, self.threhold_high_2g],
                                                       layout='horizontal', labels=False)
 
+        # Choice of the main color
         self.main_bi_color = widgets.ComboBox(choices=['Red', 'Green', 'Blue'], value='Red')
         main_bi_color_label = widgets.Label(value='Main color')
         main_bi_color_container = widgets.Container(widgets=[main_bi_color_label, self.main_bi_color],
                                                       layout='horizontal', labels=False)
+
+        # Run button
         metric_2g_run = widgets.FunctionGui(self.show_two_genes, call_button='Map Colors', labels=False)
         self.metric_2g_output = widgets.Label(value='')
 
+        # Build the container
         metric_2g_container = widgets.Container(widgets=[gene1_container,
                                                          gene2_container,
                                                          threhold_low_2g_container,
@@ -440,12 +592,22 @@ class DisplayEmbryo():
         return metric_2g_container
 
     def build_umap_container(self):
+        """
+        Function that builds the qt container for the umap
+        """
+        # Gene choice
         gene_label = widgets.Label(value='Choose gene')
         gene = widgets.LineEdit(value='T')
+
+        # Whether to display the clusters
         tissues_label = widgets.Label(value='Display tissues umap')
         tissues = widgets.CheckBox(value=False)
+
+        # Whether taking variable genes or not
         variable_genes_label = widgets.Label(value='Take only variable genes')
         variable_genes = widgets.CheckBox(value=True)
+
+        # Which stats to display variable genes
         stats_label = widgets.Label(value='Stat for\nchoosing distributions')
         stats = widgets.RadioButtons(choices=['Standard Deviation', 'Mean', 'Median'],
                                      value='Standard Deviation')
@@ -453,6 +615,7 @@ class DisplayEmbryo():
                                         variable_genes, self.color_map_tissues, self.tab2)
         umap_run = widgets.FunctionGui(self.umap_selec.run, call_button='Show gene on Umap', name='')
 
+        # Builds the containers
         gene_container = widgets.Container(widgets=[gene_label, gene], labels=False, layout='horizontal')
         variable_genes_container = widgets.Container(widgets=[variable_genes_label, variable_genes],
                                                      labels=False, layout='horizontal')
@@ -466,6 +629,15 @@ class DisplayEmbryo():
         return umap_container
 
     def __init__(self, viewer, embryo, *, show=False):
+        """
+        Initialise the plugin.
+        Takes as an input a napari viewer and a sc3D embryo
+
+        Args:
+            viewer (napari.Viewer): the viewer for the plugin
+            embryo (sc3D.Embryo): the embryo to display
+            show (bool): an argument to practically run the tests
+        """
         self.viewer = viewer
         self.embryo = embryo
         self.color_map_tissues = {
@@ -526,9 +698,10 @@ class DisplayEmbryo():
 
         tissue_container = self.build_tissue_selection()
         surf_container = self.build_surf_container()
-        tab1 = QTabWidget()
-        tab1.addTab(tissue_container.native, 'Tissues')
-        tab1.addTab(surf_container.native, 'Surfaces')
+        self.tab1 = QTabWidget()
+        self.tab1.addTab(tissue_container.native, 'Tissues')
+        last_tab = self.tab1.addTab(surf_container.native, 'Surfaces')
+        self.tab1.nb_tabs = last_tab
 
         self.tab2 = QTabWidget()
         metric_1g_container = self.build_metric_1g_container()
@@ -539,6 +712,6 @@ class DisplayEmbryo():
         last_tab = self.tab2.addTab(umap_container.native, 'umap')
         self.tab2.nb_tabs = last_tab
 
-        self.viewer.window.add_dock_widget(tab1, name='Tissue visualization')
+        self.viewer.window.add_dock_widget(self.tab1, name='Tissue visualization')
         self.viewer.window.add_dock_widget(self.tab2, name='Metric visualization')
         self.show = show

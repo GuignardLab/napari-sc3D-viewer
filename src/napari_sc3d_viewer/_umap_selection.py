@@ -1,3 +1,9 @@
+"""
+This file is subject to the terms and conditions defined in
+file 'LICENCE', which is part of this source code package.
+Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
+"""
+
 from qtpy.QtWidgets import (QWidget,
                             QVBoxLayout)
 from ._utils import error_points_selection, safe_toarray
@@ -9,6 +15,11 @@ from matplotlib.widgets import LassoSelector
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 
+# This class is directly copied from there:
+# https://matplotlib.org/stable/gallery/widgets/lasso_selector_demo_sgskip.html
+# I got the info from there:
+# https://github.com/BiAPoL/napari-clusters-plotter
+# <3 <3 <3
 class SelectFromCollection:
     """
     Select indices from a matplotlib collection using `LassoSelector`.
@@ -64,7 +75,16 @@ class SelectFromCollection:
         self.canvas.draw_idle()
 
 class UmapSelection():
+    """
+    Display a pre-computed umap and allow for selection within the umap that
+    will be reflected on the parent napari viewer
+    """
     def get_stats(self, indices):
+        """
+        Given a stat function (standard deviation for example) and cell indices,
+        compute this for each gene expression over the set of selected cells
+        """
+        # If only variable are asked, do not take the raw data
         if self.variable_genes.value:
             data = self.embryo.anndata
             gene_stat = self.stat_func(data[indices].X, axis=0)
@@ -77,9 +97,14 @@ class UmapSelection():
         return top_genes, top_gene_names
 
     def show_cells(self, event):
+        """
+        Handle the showing of cells according to a lasso selection
+        """
         points = self.points
+        # when an event is captured
         if event:
             points.shown = np.zeros_like(points.shown, dtype=bool)
+            # If no cells where within the lasso selection, reset the view
             if sum(len(s.ind) for s in self.selectors)==0:
                 points.shown = points.features['current_view']
                 [pt.set_alpha(1) for pt in self.pts]
@@ -101,9 +126,12 @@ class UmapSelection():
                             ax_hist.set_xlabel('Gene expression')
                     ax_hist.set_title(f'{gene_hist} distribution')
                     ax_hist.set_xlim(0, max(0.01, maxi))
+            # If a set of cells where within the lasso selection, display them
             else:
+                # If both gene and tissues are displayed, there are 2 selectors
                 for s in self.selectors:
                     if len(s.ind)!=0:
+                        # Get, count and show the selected cells
                         indices = self.corres_to_mask[self.sorted_vals][s.ind]
                         nb_init = np.sum(points.features['current_view'])
                         points.shown[indices] = points.features['current_view'][indices]
@@ -112,6 +140,8 @@ class UmapSelection():
                                        f'({100*nb/nb_init:.1f}% of the initial))')
                         (top_genes,
                          top_gene_names) = self.get_stats(indices)
+                        # Display the distribution of the highest `stat` distribution
+                        # for the selected cells
                         for j, (ax_hist, _) in enumerate(self.ax_hists):
                             gene_name = top_gene_names[j]
                             gene_id = top_genes[j]
@@ -136,7 +166,11 @@ class UmapSelection():
         self.points.refresh()
 
     def build_figure(self):
+        """
+        Build the canvas and the figures that will held the umaps and histograms
+        """
         mask = self.mask
+        # The main figure
         static_canvas = FigureCanvas()
         fig = static_canvas.figure
         static_canvas.toolbar = NavigationToolbar(static_canvas,
@@ -144,6 +178,9 @@ class UmapSelection():
         fig.set_figwidth(10)
         fig.set_figheight(8)
         self.ax_hists = []
+
+        # Set the grid and axes according to whether the tissues
+        # have to be shown or not
         if self.tissues.value:
             gs0 = GridSpec(3, 1, figure=fig)
             gs00 = GridSpecFromSubplotSpec(1, 2, subplot_spec=gs0[:2, 0])
@@ -165,6 +202,8 @@ class UmapSelection():
                     ax.set_xlabel('Gene expression')
                 ax.set_ylabel('#cells')
                 self.ax_hists.append([ax, self.gene.value])
+
+        # Scatter of the umap for gene expression
         val_g = safe_toarray(self.embryo.anndata.raw[:, self.gene.value].X)[mask, 0]
         self.maximums = safe_toarray(self.embryo.anndata.raw.X)[mask].max(axis=0)
         colors = val_g
@@ -177,6 +216,7 @@ class UmapSelection():
         self.pts = [pts_G]
         (top_genes,
          top_gene_names) = self.get_stats(self.points.features['current_view'])
+        # Histograms of the most variable genes
         for j, (ax_hist, _) in enumerate(self.ax_hists):
             gene_hist = top_gene_names[j]
             gene_id = top_genes[j]
@@ -193,10 +233,12 @@ class UmapSelection():
         self.ax_G.set_ylabel('umap 2')
         self.ax_G.set_title(f'Gene: {self.gene.value}')
         self.ax_G.set_aspect('equal')
-        fig.tight_layout()
 
+        # Create and add the lasso selector
         self.selectors = []
         self.selectors.append(SelectFromCollection(self.ax_G, pts_G))
+
+        # Scatter plot of the umap according to tissue type if asked for
         if self.tissues.value:
             colors_T = [self.color_map_tissues.get(self.embryo.tissue[c], [0, 0, 0])
                         for c in self.corres_to_mask]
@@ -219,10 +261,16 @@ class UmapSelection():
             ax_T.legend(fontsize='xx-small', frameon=False, shadow=False)
 
         fig.canvas.mpl_connect("button_release_event", self.show_cells)
+        # That tight_layout does not work, I am not sure why ...
+        fig.tight_layout()
 
         return static_canvas
 
     def run(self):
+        """
+        Build the umap figure and add it to the correct tab in the viewer
+        """
+        # Retrieve the parameters
         if self.stats.value == 'Standard Deviation':
             self.stat_func = np.std
         elif self.stats == 'Mean':
@@ -232,6 +280,7 @@ class UmapSelection():
         else:
             self.stat_func = np.max
 
+        # Make sure that points and parameters are actually correct
         if self.points is None or self.points.as_layer_data_tuple()[-1]!='points':
             error_points_selection()
             return
@@ -241,7 +290,7 @@ class UmapSelection():
 
         if self.points is None or not self.gene.value in self.embryo.anndata.raw.var_names:
             return f"'{self.gene.value}' not found"
-        
+
         if 0<len(self.points.selected_data):
             mask = np.zeros_like(self.points.shown)
             mask[list(self.points.selected_data)] = True
@@ -251,6 +300,8 @@ class UmapSelection():
             mask = self.points.shown
         self.mask = mask
         self.corres_to_mask = np.where(mask)[0]
+
+        # Create the figure and the widget containing it
         static_canvas = self.build_figure()
         fig_can = self.viewer.window.add_dock_widget(static_canvas, name='umap')
         V_box = QWidget()
@@ -259,9 +310,23 @@ class UmapSelection():
         V_box.layout().addWidget(static_canvas.toolbar)
         self.tab2.removeTab(self.tab2.nb_tabs+1)
         self.tab2.addTab(V_box, 'umap graph')
-        # self.viewer.window.add_dock_widget(V_box)
 
     def __init__(self, viewer, embryo, gene, tissues, stats, variable_genes, color_map_tissues, tab2):
+        """
+        Creation of the umap widget
+
+        Args:
+            viewer (napari.Viewer): napari viewer containing the `sc3D` points
+            embryo (sc3D.Embryo): embryo to display
+            gene (str): gene to display on the umap
+            tissues (bool): whether or not to display the umap with the tissues
+            stats (str ['Standard Deviation' | 'Mean' | 'Median']): Stat to compute
+            variable_genes (bool): whether to display only variable genes or not
+            color_map_tissues (dict): dictionnary mapping tissues id to their colors,
+                necessary if `tissues` is `True`
+            tab2 (qtpy.QtWidgets.QTabWidget): tab where to insert the produced
+                scatter plot. Need `tab2.nb_tabs` parameter
+        """
         super().__init__()
         self.viewer = viewer
         self.points = self.viewer.layers.selection.active

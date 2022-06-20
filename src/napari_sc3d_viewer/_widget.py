@@ -1,10 +1,7 @@
 """
-This module is an example of a barebones QWidget plugin for napari
-
-It implements the Widget specification.
-see: https://napari.org/plugins/guides.html?#widgets
-
-Replace code below according to your needs.
+This file is subject to the terms and conditions defined in
+file 'LICENCE', which is part of this source code package.
+Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 import json
 from sc3D import Embryo
@@ -18,7 +15,13 @@ from ._utils import error_json_format
 from pathlib import Path
 
 class Startsc3D(QWidget):
+    """
+    Build the initial widget to load the spatial single cell data
+    """
     def _on_click(self):
+        """
+        Function to load and call the browsing widget
+        """
         # When clicking on the loading button
         data_path = Path(self.h5ad_file.line_edit.value)
         tissue_names = Path(self.json_file.line_edit.value)
@@ -42,17 +45,25 @@ class Startsc3D(QWidget):
                              pos_reg_id = self.pos_reg_id.value,
                              gene_name_id = self.gene_name_id.value,
                              umap_id = self.umap_id.value)
-        
+
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
         return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
 
     def __init__(self, napari_viewer, *, show=False):
+        """
+        Build the containers for the loading widget
+
+        Args:
+            napari_viewer (napari.Viewer): the parent napari viewer
+            show (bool): a parameter for testing the plugin since some function
+                wait for user input
+        """
         super().__init__()
         self.viewer = napari_viewer
         self.show = show
-        
-        # Parameters information widget        
+
+        # Parameters information widget
         tissue_id_label = widgets.Label(value='Column name for Tissue id')
         self.tissue_id = widgets.LineEdit(value='predicted.id')
         tissue_id = widgets.Container(widgets=[tissue_id_label, self.tissue_id], labels=False)
