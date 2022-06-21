@@ -13,7 +13,7 @@ profile = "black"
 line_length = 79
 
 [tool.bumpver]
-current_version = "2.1.0"
+current_version = "0.0.1"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -25,8 +25,8 @@ push = false
     'current_version = "{version}"',
 ]
 "src/napari_sc3d_viewer/__init__.py" = [
-	'__version__ = "{version}"',
+    '__version__ = "{version}"',
 ]
 "setup.cfg" = [
-	'version = {version}',
+    'version = {version}',
 ]
