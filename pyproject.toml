@@ -28,3 +28,6 @@ push = false
 	'__version__ = "{version}"'
 ]
 
+"setup.cfg" = [
+	'version = "{version}"'
+]

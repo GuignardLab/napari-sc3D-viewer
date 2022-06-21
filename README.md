@@ -9,7 +9,7 @@
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-sc3D-viewer)](https://napari-hub.org/plugins/napari-sc3D-viewer)
 
 
-A plugin to visualise 3D single cell omics
+A plugin to visualise 3D spatial single cell omics
 
 ----------------------------------
 
