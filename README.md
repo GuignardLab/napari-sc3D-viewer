@@ -33,7 +33,7 @@ To install the surface computation enabled version it is necessary to use Python
     pip install '.[pyvista]'
 from the correct folder or
 
-    pip install napari-sc3D-viewer[pyvista]
+    pip install 'napari-sc3D-viewer[pyvista]'
 
 to install directly from pip or
 
