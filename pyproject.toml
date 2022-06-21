@@ -25,9 +25,8 @@ push = false
     'current_version = "{version}"',
 ]
 "src/napari_sc3d_viewer/__init__.py" = [
-	'__version__ = "{version}"'
+	'__version__ = "{version}"',
 ]
-
 "setup.cfg" = [
-	'version = {version}'
+	'version = {version}',
 ]
