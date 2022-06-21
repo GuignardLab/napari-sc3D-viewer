@@ -1,6 +1,5 @@
 from napari_sc3d_viewer import Startsc3D
 import numpy as np
-import inspect
 
 try:
     import pyvista
