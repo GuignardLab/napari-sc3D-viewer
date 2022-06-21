@@ -5,6 +5,11 @@ build-backend = "setuptools.build_meta"
 [napari_sc3d_viewer.optional-dependencies]
 pyvista = ["pyvista"]
 
+[tool.briefcase]
+project_name = "napari-sc3D-viewer"
+author = "Leo Guignard"
+license = "MIT"
+
 [tool.black]
 line-length = 79
 
