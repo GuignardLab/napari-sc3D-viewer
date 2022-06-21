@@ -13,7 +13,7 @@ profile = "black"
 line_length = 79
 
 [tool.bumpver]
-current_version = "2.0.0"
+current_version = "2.1.0"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -29,5 +29,5 @@ push = false
 ]
 
 "setup.cfg" = [
-	'version = "{version}"'
+	'version = {version}'
 ]
