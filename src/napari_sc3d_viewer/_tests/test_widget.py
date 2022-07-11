@@ -1,4 +1,4 @@
-from napari_sc3d_viewer import Startsc3D
+from napari_sc3d_viewer import LoadAtlas
 import numpy as np
 
 try:
@@ -14,7 +14,7 @@ def test_example_q_widget(make_napari_viewer, capsys):
     viewer = make_napari_viewer()
 
     # create our widget, passing in the viewer
-    my_widget = Startsc3D(viewer, show=False)
+    my_widget = LoadAtlas(viewer, show=False)
 
     # call our widget method
     my_widget.h5ad_file.value = 'test_data/data_test.h5ad'

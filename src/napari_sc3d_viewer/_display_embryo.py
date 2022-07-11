@@ -203,7 +203,12 @@ class DisplayEmbryo():
 
         # Get the 3D position of the cells of the tissue
         tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
-        t_id = tissue_to_num[tissue]
+        if tissue in tissue_to_num:
+            t_id = tissue_to_num[tissue]
+        elif not isinstance(tissue, int):
+            t_id = int(tissue)
+        else:
+            t_id = tissue
         points = [self.embryo.pos_3D[c] for c in self.embryo.cells_from_tissue[t_id]]
         points = np.array(points)
 

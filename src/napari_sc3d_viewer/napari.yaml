@@ -1,10 +1,15 @@
 name: napari-sc3D-viewer
 display_name: sc3D Viewer
 contributions:
-  commands: 
-    - id: napari-sc3D-viewer.sc3D_viewer
-      python_name: napari_sc3d_viewer._widget:Startsc3D
+  commands:
+    - id: napari-sc3D-viewer.load_atlas
+      python_name: napari_sc3d_viewer._widget_load:LoadAtlas
+      title: Make sc3D Viewer Widget
+    - id: napari-sc3D-viewer.register_sc3D
+      python_name: napari_sc3d_viewer._widget_register:RegisterSc3D
       title: Make sc3D Viewer Widget
   widgets:
-    - command: napari-sc3D-viewer.sc3D_viewer
-      display_name: Start sc3D Viewer
+    - command: napari-sc3D-viewer.load_atlas
+      display_name: Load spatial single cell
+    - command: napari-sc3D-viewer.register_sc3D
+      display_name: Register spatial single cell
