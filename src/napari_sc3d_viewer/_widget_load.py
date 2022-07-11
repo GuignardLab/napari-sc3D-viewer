@@ -34,7 +34,9 @@ class LoadAtlas(QWidget):
                     error_json_format(show=self.show)
         else:
             corres_tissues = {}
-        sample_list = self.sample_list_value.value
+
+        sample_list = self.sample_list.value
+
         if 0<len(sample_list):
             delim = None
             if ',' in sample_list:
@@ -105,8 +107,8 @@ class LoadAtlas(QWidget):
         self.out_read = widgets.Label(value='')
         json = widgets.Container(widgets=[json_label, self.json_file], labels=False)
         sample_list_label = widgets.Label(value='List of samples (if multiple h5 files)')
-        self.sample_list_value = widgets.LineEdit(value='')
-        sample_list = widgets.Container(widgets=[sample_list_label, self.sample_list_value], labels=False)
+        self.sample_list = widgets.LineEdit(value='')
+        sample_list = widgets.Container(widgets=[sample_list_label, self.sample_list], labels=False)
         load = widgets.Container(widgets=[h5ad, json, sample_list, self.out_read], labels=False)
         load.native.layout().addStretch(1)
 
