@@ -1,4 +1,4 @@
-from napari_sc3d_viewer import LoadAtlas
+from napari_sc3d_viewer import LoadAtlas, RegisterSc3D
 import numpy as np
 
 try:
@@ -112,3 +112,21 @@ def test_example_q_widget(make_napari_viewer, capsys):
             displayed_embryo.show_surf()
             displayed_embryo.surf_threshold.value = 5
             displayed_embryo.show_surf()
+
+        my_widget = LoadAtlas(viewer, show=False)
+
+    # create our widget, passing in the viewer
+    my_widget = RegisterSc3D(viewer, show=False)
+
+    # call our widget method
+    my_widget.h5ad_file.value = 'test_data/data_test.h5ad'
+    my_widget.json_file.value = 'test_data/corresptissues.json'
+    displayed_embryo = my_widget._on_click_sc3D()
+
+    my_widget = RegisterSc3D(viewer, show=False)
+
+    # call our widget method
+    my_widget.h5ad_file.value = 'test_data/data_test.h5ad'
+    my_widget.json_file.value = 'test_data/corresptissues.json'
+    displayed_embryo = my_widget._on_click_PASTE()
+

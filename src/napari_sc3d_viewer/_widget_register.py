@@ -78,18 +78,24 @@ class RegisterSc3D(QWidget):
 
     def _on_click_sc3D(self):
         self._load_data(weights=True, tissue_ignore=True)
-        self.embryo.registration_3d(th_d=self.th_d.value)
+        try:
+            self.embryo.registration_3d(th_d=self.th_d.value)
+        except:
+            self.out_read.value = 'The registration failed :/'
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
         return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
 
     def _on_click_PASTE(self):
         self._load_data(weights=False, tissue_ignore=True)
-        self.embryo.registration_3d(th_d=self.th_d.value, method='paste',
-                                    min_counts_cells=self.min_counts_cells.value,
-                                    min_counts_genes=self.min_counts_genes.value,
-                                    alpha=self.alpha.value,
-                                    pre_registration=self.pre_reg.value)
+        try:
+            self.embryo.registration_3d(th_d=self.th_d.value, method='paste',
+                                        min_counts_cells=self.min_counts_cells.value,
+                                        min_counts_genes=self.min_counts_genes.value,
+                                        alpha=self.alpha.value,
+                                        pre_registration=self.pre_reg.value)
+        except:
+            self.out_read.value = 'The registration failed :/'
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
         return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
@@ -106,6 +112,20 @@ class RegisterSc3D(QWidget):
         super().__init__()
         self.viewer = napari_viewer
         self.show = show
+
+        # File path widget
+        h5ad_label = widgets.Label(value='h5ad file')
+        self.h5ad_file = widgets.FileEdit(value=Path('.').absolute(), filter='*.h5*')
+        h5ad = widgets.Container(widgets=[h5ad_label, self.h5ad_file], labels=False)
+        json_label = widgets.Label(value='Tissue names')
+        self.json_file = widgets.FileEdit(value=Path('.').absolute(), filter='*.json')
+        self.out_read = widgets.Label(value='')
+        json = widgets.Container(widgets=[json_label, self.json_file], labels=False)
+        sample_list_label = widgets.Label(value='List of samples (if multiple h5 files)')
+        self.sample_list_value = widgets.LineEdit(value='')
+        sample_list = widgets.Container(widgets=[sample_list_label, self.sample_list_value], labels=False)
+        load = widgets.Container(widgets=[h5ad, json, sample_list, self.out_read], labels=False)
+        load.native.layout().addStretch(1)
 
         # Registration widget
         tissues_to_ignore_label = widgets.Label(value='Tissues to ignore\nfor registration')
@@ -129,7 +149,8 @@ class RegisterSc3D(QWidget):
         global_params_reg = widgets.Container(widgets=[tissues_to_ignore,
                                                 nb_CS_begin_ignore,
                                                 nb_CS_end_ignore,
-                                                xy_resolution], labels=False)
+                                                xy_resolution,
+                                                self.out_read], labels=False)
         global_params_reg.native.layout().addStretch(1)
 
         # sc3D parameters
@@ -182,7 +203,8 @@ class RegisterSc3D(QWidget):
         paste_tab = widgets.Container(widgets=[min_counts_genes,
                                      min_counts_cells, work_with_raw,
                                      alpha, pre_reg,
-                                     register_paste], labels=False)
+                                     register_paste,
+                                     self.out_read], labels=False)
         paste_tab.native.layout().addStretch(1)
         register_paste.clicked.connect(self._on_click_PASTE)
 
@@ -210,20 +232,6 @@ class RegisterSc3D(QWidget):
                                             gene_name_id,
                                             umap_id], labels=False)
         params.native.layout().addStretch(1)
-
-        # File path widget
-        h5ad_label = widgets.Label(value='h5ad file')
-        self.h5ad_file = widgets.FileEdit(value=Path('.').absolute(), filter='*.h5*')
-        h5ad = widgets.Container(widgets=[h5ad_label, self.h5ad_file], labels=False)
-        json_label = widgets.Label(value='Tissue names')
-        self.json_file = widgets.FileEdit(value=Path('.').absolute(), filter='*.json')
-        self.out_read = widgets.Label(value='')
-        json = widgets.Container(widgets=[json_label, self.json_file], labels=False)
-        sample_list_label = widgets.Label(value='List of samples (if multiple h5 files)')
-        self.sample_list_value = widgets.LineEdit(value='')
-        sample_list = widgets.Container(widgets=[sample_list_label, self.sample_list_value], labels=False)
-        load = widgets.Container(widgets=[h5ad, json, sample_list, self.out_read], labels=False)
-        load.native.layout().addStretch(1)
 
         tab_reg = QTabWidget()
         tab_reg.addTab(load.native, 'Paths')
