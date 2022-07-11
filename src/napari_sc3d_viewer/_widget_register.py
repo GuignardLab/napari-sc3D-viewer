@@ -69,24 +69,12 @@ class RegisterSc3D(QWidget):
             tissues_to_ignore = []
         self.embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues,
                              tissue_id = self.tissue_id.value,
-                             pos_reg_id = self.pos_reg_id.value,
                              gene_name_id = self.gene_name_id.value,
                              umap_id = self.umap_id.value,
                              sample_list = sample_list,
                              pos_id = self.pos_id.value,
-                             tissues_to_ignore = tissues_to_ignore)
-
-
-    def _on_click_load(self):
-        """
-        Function to load and call the browsing widget
-        """
-        # When clicking on the loading button
-
-        # Clearing the viewer and running the viewer plugin
-        self._load_data(weights=False, tissue_ignore=False)
-        self.viewer.window.remove_dock_widget('all')
-        return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
+                             tissues_to_ignore = tissues_to_ignore,
+                             tissue_weight=tissue_weight)
 
     def _on_click_sc3D(self):
         self._load_data(weights=True, tissue_ignore=True)
@@ -99,7 +87,9 @@ class RegisterSc3D(QWidget):
         self._load_data(weights=False, tissue_ignore=True)
         self.embryo.registration_3d(th_d=self.th_d.value, method='paste',
                                     min_counts_cells=self.min_counts_cells.value,
-                                    min_counts_genes=self.min_counts_genes.value)
+                                    min_counts_genes=self.min_counts_genes.value,
+                                    alpha=self.alpha.value,
+                                    pre_registration=self.pre_reg.value)
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget('all')
         return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
@@ -131,15 +121,12 @@ class RegisterSc3D(QWidget):
         self.nb_CS_end_ignore = widgets.SpinBox(value=0, min=0, max=50)
         nb_CS_end_ignore = widgets.Container(widgets=[nb_CS_end_ignore_label,
                                              self.nb_CS_end_ignore], labels=False)
-        xy_resolution_label = widgets.Label(value='Resolution in µm')
+        xy_resolution_label = widgets.Label(value='XY Resolution in µm')
         self.xy_resolution = widgets.FloatSpinBox(value=.6)
         xy_resolution = widgets.Container(widgets=[xy_resolution_label,
                                           self.xy_resolution], labels=False)
-        pos_id_label = widgets.Label(value='Column name for 2D position')
-        self.pos_id = widgets.LineEdit(value='X_spatial')
-        pos_id = widgets.Container(widgets=[pos_id_label, self.pos_id], labels=False)
 
-        global_params_reg = widgets.Container(widgets=[pos_id, tissues_to_ignore,
+        global_params_reg = widgets.Container(widgets=[tissues_to_ignore,
                                                 nb_CS_begin_ignore,
                                                 nb_CS_end_ignore,
                                                 xy_resolution], labels=False)
@@ -172,32 +159,46 @@ class RegisterSc3D(QWidget):
         min_counts_cells = widgets.Container(widgets=[min_counts_cells_label,
                                           self.min_counts_cells], labels=False)
 
-        work_with_raw_label = widgets.Label(value='Use raw data (ticked=Yes)')
+        work_with_raw_label = widgets.Label(value='Use raw data')
         self.work_with_raw = widgets.CheckBox(value=True)
-        work_with_raw = widgets.Container(widgets=[self.work_with_raw,
-                                          work_with_raw_label], labels=False)
+        work_with_raw = widgets.Container(widgets=[work_with_raw_label,
+                                          self.work_with_raw], labels=False,
+                                    layout='horizontal')
+
+        alpha_label = widgets.Label(value='Alpha')
+        self.alpha = widgets.FloatSpinBox(value=.1, min=0, max=1)
+        alpha = widgets.Container(widgets=[alpha_label,
+                                          self.alpha], labels=False)
+
+        pre_reg_label = widgets.Label(value='Heuristics based pre-registration')
+        self.pre_reg = widgets.CheckBox(value=True)
+        pre_reg = widgets.Container(widgets=[pre_reg_label,
+                                    self.pre_reg], labels=False,
+                                    layout='horizontal')
 
         register_paste = QPushButton('Register with PASTE')
         register_paste.native = register_paste
         register_paste.name = 'register_paste'
         paste_tab = widgets.Container(widgets=[min_counts_genes,
                                      min_counts_cells, work_with_raw,
+                                     alpha, pre_reg,
                                      register_paste], labels=False)
         paste_tab.native.layout().addStretch(1)
         register_paste.clicked.connect(self._on_click_PASTE)
 
-        tab_reg = QTabWidget()
-        tab_reg.addTab(global_params_reg.native, 'Global parameters')
-        tab_reg.addTab(sc3D_tab.native, 'sc3D')
-        tab_reg.addTab(paste_tab.native, 'PASTE')
+        params_reg = QTabWidget()
+        params_reg.addTab(global_params_reg.native, 'Global reg. params.')
+        params_reg.addTab(sc3D_tab.native, 'sc3D')
+        params_reg.addTab(paste_tab.native, 'PASTE')
+
 
         # Parameters information widget
         tissue_id_label = widgets.Label(value='Column name for Tissue id')
         self.tissue_id = widgets.LineEdit(value='predicted.id')
         tissue_id = widgets.Container(widgets=[tissue_id_label, self.tissue_id], labels=False)
-        pos_reg_id_label = widgets.Label(value='Column name for 3D position\n(Note required when performing registration)')
-        self.pos_reg_id = widgets.LineEdit(value='X_spatial_registered')
-        pos_reg_id = widgets.Container(widgets=[pos_reg_id_label, self.pos_reg_id], labels=False)
+        pos_id_label = widgets.Label(value='Column name for 2D position')
+        self.pos_id = widgets.LineEdit(value='X_spatial')
+        pos_id = widgets.Container(widgets=[pos_id_label, self.pos_id], labels=False)
         gene_name_id_label = widgets.Label(value='Column name for gene names')
         self.gene_name_id = widgets.LineEdit(value='feature_name')
         gene_name_id = widgets.Container(widgets=[gene_name_id_label, self.gene_name_id], labels=False)
@@ -205,7 +206,7 @@ class RegisterSc3D(QWidget):
         self.umap_id = widgets.LineEdit(value='X_umap')
         umap_id = widgets.Container(widgets=[umap_id_label, self.umap_id], labels=False)
         params = widgets.Container(widgets=[tissue_id,
-                                            pos_reg_id,
+                                            pos_id,
                                             gene_name_id,
                                             umap_id], labels=False)
         params.native.layout().addStretch(1)
@@ -224,29 +225,16 @@ class RegisterSc3D(QWidget):
         load = widgets.Container(widgets=[h5ad, json, sample_list, self.out_read], labels=False)
         load.native.layout().addStretch(1)
 
-        # Tabifying
-        tab_atlas = QTabWidget()
-        tab_atlas.addTab(load.native, 'File paths')
-        tab_atlas.addTab(params.native, 'Parameters')
-        tab_atlas.native = tab_atlas
-
-        # Loading button
-        load_atlas = QPushButton('Load Atlas')
-        load_atlas.native = load_atlas
-        atlas_load_W = widgets.Container(widgets=[tab_atlas, load_atlas], labels=False)
-
-
-        over_tab = QTabWidget()
-        over_tab.addTab(atlas_load_W.native, 'Data structure')
-        over_tab.addTab(tab_reg, 'Registration parameters')
+        tab_reg = QTabWidget()
+        tab_reg.addTab(load.native, 'Paths')
+        tab_reg.addTab(params.native, 'Column labels')
+        tab_reg.addTab(params_reg, 'Reg. params.')
 
         #Slight improvement of the layout
         layout = QVBoxLayout()
         layout.addStretch(1)
         self.setLayout(layout)
-        self.layout().addWidget(over_tab)
-        tab_atlas.adjustSize()
+        self.layout().addWidget(tab_reg)
         tab_reg.adjustSize()
-        load_atlas.clicked.connect(self._on_click_load)
 
 

@@ -18,7 +18,7 @@ class LoadAtlas(QWidget):
     """
     Build the initial widget to load the spatial single cell data
     """
-    def _load_data(self, weights, tissue_ignore):
+    def _load_data(self):
         data_path = Path(self.h5ad_file.line_edit.value)
         tissue_names = Path(self.json_file.line_edit.value)
         if not data_path.exists() or not data_path.suffix in ['.h5ad', '.h5', '.csv']:
@@ -50,8 +50,7 @@ class LoadAtlas(QWidget):
                              pos_reg_id = self.pos_reg_id.value,
                              gene_name_id = self.gene_name_id.value,
                              umap_id = self.umap_id.value,
-                             sample_list = sample_list,
-                             pos_id = self.pos_id.value)
+                             sample_list = sample_list)
 
 
     def _on_click_load(self):
@@ -61,7 +60,7 @@ class LoadAtlas(QWidget):
         # When clicking on the loading button
 
         # Clearing the viewer and running the viewer plugin
-        self._load_data(weights=False, tissue_ignore=False)
+        self._load_data()
         self.viewer.window.remove_dock_widget('all')
         return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
 
@@ -82,7 +81,7 @@ class LoadAtlas(QWidget):
         tissue_id_label = widgets.Label(value='Column name for Tissue id')
         self.tissue_id = widgets.LineEdit(value='predicted.id')
         tissue_id = widgets.Container(widgets=[tissue_id_label, self.tissue_id], labels=False)
-        pos_reg_id_label = widgets.Label(value='Column name for 3D position\n(Note required when performing registration)')
+        pos_reg_id_label = widgets.Label(value='Column name for 3D position')
         self.pos_reg_id = widgets.LineEdit(value='X_spatial_registered')
         pos_reg_id = widgets.Container(widgets=[pos_reg_id_label, self.pos_reg_id], labels=False)
         gene_name_id_label = widgets.Label(value='Column name for gene names')
@@ -122,18 +121,12 @@ class LoadAtlas(QWidget):
         load_atlas.native = load_atlas
         atlas_load_W = widgets.Container(widgets=[tab_atlas, load_atlas], labels=False)
 
-
-        over_tab = QTabWidget()
-        over_tab.addTab(atlas_load_W.native, 'Data structure')
-        over_tab.addTab(tab_reg, 'Registration parameters')
-
         #Slight improvement of the layout
         layout = QVBoxLayout()
         layout.addStretch(1)
         self.setLayout(layout)
-        self.layout().addWidget(over_tab)
+        self.layout().addWidget(atlas_load_W.native)
         tab_atlas.adjustSize()
-        tab_reg.adjustSize()
         load_atlas.clicked.connect(self._on_click_load)
 
 
