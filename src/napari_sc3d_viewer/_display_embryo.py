@@ -487,7 +487,7 @@ class DisplayEmbryo():
         else:
             surf_container = widgets.Label(value=('\tPlease install pyvista to compute tissue surfaces\n'
                                  '\tYou can run:\n'
-                                 '\t`pip install pyvista`\nor\n`conda install pyvista`\n'
+                                 '\t\t- `pip install pyvista` or\n\t\t- `conda install pyvista`\n'
                                  '\tto install it.'))
         return surf_container
 
