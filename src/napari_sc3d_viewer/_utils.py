@@ -2,6 +2,9 @@ from qtpy.QtWidgets import QMessageBox
 import numpy as np
 
 def safe_toarray(tab):
+    """
+    Returns an ndarray from a ndarray or a sparse matrix
+    """
     if not isinstance(tab, np.ndarray):
         return tab.toarray()
     else:
@@ -9,6 +12,9 @@ def safe_toarray(tab):
 
 
 def error_json_format(show=True):
+    """
+    Print a message error in a box
+    """
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
     msg.setText('json file format error')
@@ -19,6 +25,9 @@ def error_json_format(show=True):
         msg.exec_()
 
 def error_points_selection(show=True):
+    """
+    Print a message error in a box
+    """
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
     msg.setText('Point cloud selection error')
