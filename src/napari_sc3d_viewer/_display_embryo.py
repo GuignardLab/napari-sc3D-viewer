@@ -83,13 +83,13 @@ class DisplayEmbryo():
                 if points.face_colormap.name in plt.colormaps():
                     fig.colorbar(cm.ScalarMappable(norm=colors.Normalize(m, M),
                                                    cmap=points.face_colormap.name),
-                                 label=points.metadata['gene'] + ', normalized values')
+                                 label=points.metadata['gene'] + ', normalized values', ax=ax)
                     min_, max_ = points.metadata['gene_min_max']
                     min_ = (max_-min_)*m+min_
                     max_ = (max_-min_)*M+min_
                     fig.colorbar(cm.ScalarMappable(norm=colors.Normalize(min_, max_),
                                                    cmap=points.face_colormap.name),
-                                 label=points.metadata['gene'] + ', original values')
+                                 label=points.metadata['gene'] + ', original values', ax=ax)
                 else:
                     fig.text(0, 0, ( 'Could not find the colormap '
                                     f'`{points.face_colormap.name}` '
@@ -650,6 +650,9 @@ class DisplayEmbryo():
         self.viewer = viewer
         self.embryo = embryo
         self.color_map_tissues = {
+            1: [0, 0, 0],
+            11: [0, 0, 0],
+            26: [0, 0, 0],
             5: [0.7411764705882353, 0.803921568627451, 1.0],
             6: [0.19607843137254902, 0.35294117647058826, 0.6078431372549019],
             7: [0.996078431372549, 0.6862745098039216, 0.08627450980392157],
