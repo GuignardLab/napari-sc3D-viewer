@@ -14,15 +14,28 @@ A plugin to visualise 3D spatial single cell omics
 
 This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
 
+## Test and atlas datasets
+
+Because the datasets representing the mouse embryo at stages E8.5 and E9.0 are rather large, it is not possible to host them on GitHub. They are instead hosted on figshare at the following links:
+- [E8.5 replicate 1]()
+- [E8.5 replicate 2]()
+- [E9.0 replicate 1]()
+
+Once downloaded, one can open them in the viewer as explained below (note that the files for the tissue names are stored in the json file there: `napari-sc3D-viewer/test_data/corresptissues.json`).
+
 ## Installation
 
-You can install `napari-sc3D-viewer` via [pip]:
+We strongly recommend to install the viewer in a environement such as `conda` for example:
 
-    pip install .
-(from the correct folder)
+    conda create -n sc3D python=3.10
+    conda activate sc3D
+
+Once done, you can install `napari-sc3D-viewer` via [pip] or via [conda]:
+
+    conda install napari-sc3d-viewer
 or
 
-    pip install napari-sc3D-viewer
+    pip install napari-sc3d-viewer
 
 To install latest development version :
 
@@ -34,12 +47,21 @@ To install the surface computation enabled version it is necessary to use Python
 from the correct folder or
 
     pip install 'napari-sc3D-viewer[pyvista]'
+or
+
+    conda install 'napari-sc3D-viewer[pyvista]'
 
 to install directly from pip or
 
     pip install 'napari-sc3D-viewer[pyvista] @ git+https://github.com/GuignardLab/napari-sc3D-viewer.git'
 
 to install the latest version
+
+Once installed, one can start `napari` from a terminal just by typing:
+
+    napari
+
+Then, one can follow the following steps to browse the dataset.
 
 ## Usage
 
@@ -153,3 +175,4 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [VTK]: https://vtk.org/
 [scanpy]: https://scanpy.readthedocs.io/en/latest/index.html
 [anndata]: https://anndata.readthedocs.io/en/latest/
+[conda]: https://conda.io
