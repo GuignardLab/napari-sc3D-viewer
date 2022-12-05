@@ -30,14 +30,20 @@ We strongly recommend to install the viewer in a environement such as `conda` fo
     conda create -n sc3D python=3.10
     conda activate sc3D
 
-Once done, you can install `napari-sc3D-viewer` via [pip] or via [conda]:
+### Installing napari
+The first step is to [install napari](https://napari.org/stable/tutorials/fundamentals/installation.html) on your computer. The previous link should explain how to do so.
+
+### Installing napari-sc3D-viewer
+Once napari is installed, you can install `napari-sc3D-viewer` via [napari's plugin manager](https://napari.org/stable/plugins/find_and_install_plugin.html).
+
+Another way is to install `napari-sc3D-viewer` via [pip] or via [conda]:
 
     conda install napari-sc3d-viewer
 or
 
     pip install napari-sc3d-viewer
 
-To install latest development version :
+Finally, to install latest development version :
 
     pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
 
@@ -67,6 +73,12 @@ Then, one can follow the following steps to browse the dataset.
 
 `napari-sc3D-viewer` allows users to easily visualise and navigate 3D spatial single-cell transcriptomics using napari.
 
+### Starting the plugin
+To open the plugin you can click on the "Load spatial single cell" from the `Plugins -> napari-sc3d-viewer` menu:
+![loading image](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/0.openplugin.png).
+
+Once opened you should have an interface poping similar to the one showed in the image below (note that it might not be exactly the same depending on the version of the viewer you are using).
+
 ### Loading and opening a dataset
 
 <!-- To test your the plugin you can download the following dataset composed of a id to tissue name file located [there](https://github.com/GuignardLab/sc3D/tree/main/data) and a scanpy h5ad dataset [there](https://figshare.com/s/1c29d867bc8b90d754d2). The dataset is from the following publication: [pub] -->
@@ -84,7 +96,7 @@ The json file should look like that:
 If no json file or a wrong json file is given, the original cluster id numbers are used.
 
 The h5ad file should be informed in (1) and the json file in (2).
-![loading image](images/1.loading.png)
+![loading image](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/1.loading.png)
 
 Let `data` be your h5ad data structure. To work properly, the viewer is expecting 4 different columns to be present in the h5ad file:
 - the cluster id column (by default named 'predicted.id' that can be accessed as `data.obs['predicted.id']`)
@@ -101,7 +113,7 @@ Once all the data paths and fields are correctly informed pressing the `Load Atl
 Once the dataset is loaded there are few options to explore it.
 
 The viewer should look like to the following:
-![viewer](images/2.viewer.png)
+![viewer](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/2.viewer.png)
 
 It is divided in two main parts, the Tissue visualisation (1) part and the Metric visualisation (2) one.
 Both of them are themselves split in two and three tabs respectively. All these tabs allow you to visualise and explore the dataset in different fashions.
@@ -116,7 +128,7 @@ The 2 Genes (2.2) tab allows to display gene coexpression.
 
 The umap tab (2.3) allows to display the umap of the selected cells and to manually select subcategories of cells to be displayed.
 
-![viewer](images/3.description.png)
+![viewer](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/3.description.png)
 
 #### Explanatory "videos".
 The plugin is meant to be easy to use. That means that you should be able to play with it and figure things out by yourself.
@@ -124,22 +136,22 @@ The plugin is meant to be easy to use. That means that you should be able to pla
 That being said, it is not always that easy. You can find below a series of videos showing how to perform some of the main features.
 
 #### Loading data
-![Loading data video](images/loading.gif)
+![Loading data video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/loading.gif)
 
 #### Selecting tissues
-![Selecting tissues video](images/tissue-select.gif)
+![Selecting tissues video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/tissue-select.gif)
 
 #### Displaying one gene
-![Displaying one gene video](images/gene1.gif)
+![Displaying one gene video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/gene1.gif)
 
 #### Displaying two genes co-expression
-![Displaying genes video](images/gene2.gif)
+![Displaying genes video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/gene2.gif)
 
 #### Playing with the umap
-![Playing with the umap video](images/umap.gif)
+![Playing with the umap video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/umap.gif)
 
 #### Computing and processing the surface
-![Computing and processing the surface video](images/surfaces.gif)
+![Computing and processing the surface video](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/surfaces.gif)
 
 ## Contributing
 
