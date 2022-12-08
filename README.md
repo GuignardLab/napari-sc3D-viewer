@@ -17,9 +17,9 @@ This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookie
 ## Test and atlas datasets
 
 Because the datasets representing the mouse embryo at stages E8.5 and E9.0 are rather large, it is not possible to host them on GitHub. They are instead hosted on figshare at the following links:
-- [E8.5 replicate 1]()
-- [E8.5 replicate 2]()
-- [E9.0 replicate 1]()
+- [E8.5 replicate 1](https://figshare.com/s/1c29d867bc8b90d754d2)
+- [E8.5 replicate 2](https://doi.org/10.6084/m9.figshare.21695849.v1)
+- [E9.0 replicate 1](https://doi.org/10.6084/m9.figshare.21695879.v1)
 
 Once downloaded, one can open them in the viewer as explained below (note that the files for the tissue names are stored in the json file there: `napari-sc3D-viewer/test_data/corresptissues.json`).
 
@@ -75,7 +75,7 @@ Then, one can follow the following steps to browse the dataset.
 
 ### Starting the plugin
 To open the plugin you can click on the "Load spatial single cell" from the `Plugins -> napari-sc3d-viewer` menu:
-![loading image](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/0.openplugin.png).
+![loading image](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/0.openplugin.png)
 
 Once opened you should have an interface poping similar to the one showed in the image below (note that it might not be exactly the same depending on the version of the viewer you are using).
 
