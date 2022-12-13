@@ -33,9 +33,9 @@ There are many ways to install our viewer, but the global idea is that it works 
 - first installing [napari]
 - then installing the [napari-sc3d-viewer] plugin.
 
-Installing [napari] and the [napari-sc3d-viewer] plugin can be done either through command line or using the interface.
+Installing [napari] and the [napari-sc3d-viewer] plugin can be done either through command line or using an interface.
 
-If you have decided to use command line, as [napari] developers do, we strongly recommend to install the viewer in a environement such as `conda` for example:
+If you have decided to use command line, as [napari] developers do, we strongly recommend to install the viewer in an environement such as a conda environment `conda` for example:
 
     conda create -n sc3D python=3.10
     conda activate sc3D
