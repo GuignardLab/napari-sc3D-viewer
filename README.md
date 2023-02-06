@@ -24,18 +24,34 @@ Because the datasets representing the mouse embryo at stages E8.5 and E9.0 are r
 Once downloaded, one can open them in the viewer as explained below (note that the files for the tissue names are stored in the json file there: `napari-sc3D-viewer/test_data/corresptissues.json`).
 
 ## Installation
+_____
+__Disclaimer:__
+While we tried to make the installation and usage as easy as possible, please keep in mind that [napari-sc3d-viewer] is still under development, it has been and is developed by a single person. We will be happy to answer any question and help in any way.
+_____
 
-We strongly recommend to install the viewer in a environement such as `conda` for example:
+There are many ways to install our viewer, but the global idea is that it works in two steps:
+- first installing [napari]
+- then installing the [napari-sc3d-viewer] plugin.
+
+Installing [napari] and the [napari-sc3d-viewer] plugin can be done either through command line or using an interface.
+
+If you have decided to use command line, as [napari] developers do, we strongly recommend to install the viewer in an environement such as a conda environment `conda` for example:
 
     conda create -n sc3D python=3.10
     conda activate sc3D
 
+
 ### Installing napari
-The first step is to [install napari](https://napari.org/stable/tutorials/fundamentals/installation.html) on your computer. The previous link should explain how to do so.
+The first step is to [install napari](https://napari.org/stable/tutorials/fundamentals/installation.html) on your computer. The previous link should explain how to do so. There you can find either the installation via terminal or directly by [downloading the binary](https://napari.org/stable/tutorials/fundamentals/installation.html#install-as-a-bundled-app).
 
 ### Installing napari-sc3D-viewer
-Once napari is installed, you can install `napari-sc3D-viewer` via [napari's plugin manager](https://napari.org/stable/plugins/find_and_install_plugin.html).
+Once [napari] is installed, you can install `napari-sc3D-viewer`.
+As for [napari], [napari-sc3D-viewer] can be installed either through an interface or via the terminal.
 
+#### Installation via graphical interface
+To install [napari-sc3D-viewer] with a visual interface, you should use the [napari's plugin manager](https://napari.org/stable/plugins/find_and_install_plugin.html) look for the plugin there and install it as explained in the previous link.
+
+#### Installation via the terminal
 Another way is to install `napari-sc3D-viewer` via [pip] or via [conda]:
 
     conda install napari-sc3d-viewer
@@ -47,6 +63,7 @@ Finally, to install latest development version :
 
     pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
 
+#### Installation of the surface computation module
 To install the surface computation enabled version it is necessary to use Python 3.9 (until [VTK] is ported to Python 3.10) and you can run one of the following commands:
 
     pip install '.[pyvista]'
@@ -63,25 +80,25 @@ to install directly from pip or
 
 to install the latest version
 
-Once installed, one can start `napari` from a terminal just by typing:
-
-    napari
-
-Then, one can follow the following steps to browse the dataset.
-
 ## Usage
 
 `napari-sc3D-viewer` allows users to easily visualise and navigate 3D spatial single-cell transcriptomics using napari.
 
 ### Starting the plugin
+First, you need to start [napari], for example, one can start it from a terminal just by typing:
+
+    napari
+
+in the correct environment.
+
+Then, one can follow the following steps to browse the dataset.
+
 To open the plugin you can click on the "Load spatial single cell" from the `Plugins -> napari-sc3d-viewer` menu:
 ![loading image](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/images/0.openplugin.png)
 
 Once opened you should have an interface poping similar to the one showed in the image below (note that it might not be exactly the same depending on the version of the viewer you are using).
 
 ### Loading and opening a dataset
-
-<!-- To test your the plugin you can download the following dataset composed of a id to tissue name file located [there](https://github.com/GuignardLab/sc3D/tree/main/data) and a scanpy h5ad dataset [there](https://figshare.com/s/1c29d867bc8b90d754d2). The dataset is from the following publication: [pub] -->
 
 The expected dataset is a [scanpy]/[anndata] h5ad file together with an optional json file that maps cluster id numbers to actual tissue/cluster name.
 
@@ -179,6 +196,8 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
 
 [file an issue]: https://github.com/GuignardLab/napari-sc3D-viewer/issues
+[napari-sc3d-viewer]: https://github.com/GuignardLab/napari-sc3D-viewer
+[napari-sc3D-viewer]: https://github.com/GuignardLab/napari-sc3D-viewer
 
 [napari]: https://github.com/napari/napari
 [tox]: https://tox.readthedocs.io/en/latest/
