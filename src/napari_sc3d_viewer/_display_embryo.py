@@ -571,7 +571,7 @@ class DisplayEmbryo():
         ], labels=False)
         cmap.native.layout().addStretch(1)
         cmap.native.layout().setSpacing(0)
-        cmap.native.layout().setContentsMargins(0.1, 0.1, 0.1, 0.1)
+        cmap.native.layout().setContentsMargins(1, 1, 1, 1)
 
         # Building the container
         tab3 = QTabWidget()
