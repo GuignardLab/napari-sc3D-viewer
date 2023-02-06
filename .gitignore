@@ -84,3 +84,5 @@ venv/
 **/_version.py
 
 tmp_images
+nb_tmp
+nb_tmp/*

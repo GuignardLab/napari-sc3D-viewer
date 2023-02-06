@@ -8,7 +8,7 @@ from qtpy.QtWidgets import (QTabWidget, QVBoxLayout, QWidget)
 from magicgui import widgets
 from ._umap_selection import UmapSelection
 from ._utils import error_points_selection, safe_toarray
-from napari.utils.colormaps import ALL_COLORMAPS
+from napari.utils.colormaps import ALL_COLORMAPS, Colormap
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -258,7 +258,7 @@ class DisplayEmbryo():
 
         # Get the cells, the different parameters and makes sure that they
         # make sense
-        cell_list = list(self.embryo.all_cells)
+        # cell_list = list(self.embryo.all_cells)
         metric = self.metric.value
         gene = self.gene.value
         is_metric = metric in self.embryo.anndata.obs.columns
@@ -362,7 +362,23 @@ class DisplayEmbryo():
         if points.face_color_mode.lower() != 'colormap':
             points.face_color = 'gene'
             points.face_color_mode = 'colormap'
-        points.face_colormap = self.cmap.value
+        if not self.cmap_check.value:
+            points.face_colormap = self.cmap.value
+        else:
+            init_value = self.grey.value
+            if self.manual_color.value == "Red":
+                color = 0
+            elif self.manual_color.value == "Green":
+                color = 1
+            else:
+                color = 2
+            cmap_val = [
+                [init_value, init_value, init_value, 1],
+                [0, 0, 0, 1],
+            ]
+            cmap_val[1][color] = 1
+            cmap = Colormap(cmap_val)
+            points.face_colormap = cmap
         points.refresh()
 
     def show_two_genes(self):
@@ -378,7 +394,7 @@ class DisplayEmbryo():
 
         # Get the list of cells (it is initially a set)
         # and all the parameters and makes sure that they make sense
-        cell_list = list(self.embryo.all_cells)
+        # cell_list = list(self.embryo.all_cells)
         gene1 = self.gene1.value
         gene2 = self.gene2.value
         low_th = self.threhold_low_2g.value
@@ -534,8 +550,28 @@ class DisplayEmbryo():
         # Choice for the color map
         self.cmap = widgets.ComboBox(choices=ALL_COLORMAPS.keys())
         self.cmap.changed.connect(self.apply_cmap)
-        cmap = widgets.Container(widgets=[self.cmap], labels=False)
+        text_manual = widgets.Label(value='Manual:')
+        self.cmap_check = widgets.CheckBox(value=False)
+        grey_text = widgets.Label(value="Start Grey:")
+        self.grey = widgets.FloatSpinBox(value=.2, min=0, max=1, step=.01)
+        color_text = widgets.Label(value="Main color")
+        self.manual_color = widgets.ComboBox(choices=["Red", "Green", "Blue"])
+        cmap_check = widgets.Container(widgets=[
+            text_manual, self.cmap_check, grey_text, self.grey
+        ], layout='horizontal', labels=False)
+        manual_color = widgets.Container(widgets=[
+            color_text, self.manual_color
+        ], layout='horizontal', labels=False)
+        cmap_man_run = widgets.FunctionGui(self.apply_cmap, call_button='Apply color map')
+        cmap = widgets.Container(widgets=[
+            self.cmap,
+            cmap_check,
+            manual_color,
+            cmap_man_run
+        ], labels=False)
         cmap.native.layout().addStretch(1)
+        cmap.native.layout().setSpacing(0)
+        cmap.native.layout().setContentsMargins(0.1, 0.1, 0.1, 0.1)
 
         # Building the container
         tab3 = QTabWidget()
