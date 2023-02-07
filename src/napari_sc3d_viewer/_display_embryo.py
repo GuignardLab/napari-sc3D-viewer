@@ -676,7 +676,7 @@ class DisplayEmbryo():
     def display_diff_expressed(self):
         tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
         tissue_to_plot = tissue_to_num[self.tissue_diff.value]
-        self.embryo.get_3D_differential_expression([tissue_to_plot], 0.025, all_genes=True)
+        self.embryo.get_3D_differential_expression([tissue_to_plot], self.vol_th.value/100, all_genes=True)
         with plt.style.context('dark_background'):
             fig, ax = plt.subplots()
             self.embryo.plot_volume_vs_neighbs(tissue_to_plot, print_top=10, ax=ax)
@@ -693,14 +693,20 @@ class DisplayEmbryo():
     def build_diff_expr_container(self):
         tissue_label = widgets.Label(value='Choose tissue:')
         self.tissue_diff = widgets.ComboBox(choices=self.all_tissues)
+        vol_th_label = widgets.Label(value='Minimum volume expressed [% of total]')
+        self.vol_th = widgets.FloatSlider(value=2.5, min=1, max=99)
         button = widgets.FunctionGui(self.display_diff_expressed ,call_button='Display differentially expressed')
         gene_diff = []
+        diff_gene_label_label = widgets.Label(value='Top 10 differentially expressed genes:')
         self.gene_diff = widgets.ComboBox(choices=gene_diff)
         self.gene_diff.changed.connect(self.show_diff_gene)
         diff_expr_container = widgets.Container(widgets=[
             tissue_label,
             self.tissue_diff,
+            vol_th_label,
+            self.vol_th,
             button,
+            diff_gene_label_label,
             self.gene_diff
         ], labels=False)
         diff_expr_container.native.layout().addStretch(1)
