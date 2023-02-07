@@ -673,6 +673,39 @@ class DisplayEmbryo():
         umap_container.native.layout().addStretch(1)
         return umap_container
 
+    def display_diff_expressed(self):
+        tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
+        tissue_to_plot = tissue_to_num[self.tissue_diff.value]
+        self.embryo.get_3D_differential_expression([tissue_to_plot], 0.025, all_genes=True)
+        with plt.style.context('dark_background'):
+            fig, ax = plt.subplots()
+            self.embryo.plot_volume_vs_neighbs(tissue_to_plot, print_top=10, ax=ax)
+            fig.show()
+        self.gene_diff.choices = self.embryo.diff_expressed_3D[tissue_to_plot].sort_values(
+            "Localization score",
+            ascending=False)[:10]['Gene names'].values
+        return
+
+    def show_diff_gene(self):
+        self.gene.value = self.gene_diff.value
+        self.show_gene()
+
+    def build_diff_expr_container(self):
+        tissue_label = widgets.Label(value='Choose tissue:')
+        self.tissue_diff = widgets.ComboBox(choices=self.all_tissues)
+        button = widgets.FunctionGui(self.display_diff_expressed ,call_button='Display differentially expressed')
+        gene_diff = []
+        self.gene_diff = widgets.ComboBox(choices=gene_diff)
+        self.gene_diff.changed.connect(self.show_diff_gene)
+        diff_expr_container = widgets.Container(widgets=[
+            tissue_label,
+            self.tissue_diff,
+            button,
+            self.gene_diff
+        ], labels=False)
+        diff_expr_container.native.layout().addStretch(1)
+        return diff_expr_container
+
     def __init__(self, viewer, embryo, *, show=False):
         """
         Initialise the plugin.
@@ -755,9 +788,11 @@ class DisplayEmbryo():
         metric_1g_container = self.build_metric_1g_container()
         metric_2g_container = self.build_metric_2g_container()
         umap_container = self.build_umap_container()
+        diff_expr_container = self.build_diff_expr_container()
         self.tab2.addTab(metric_1g_container.native, 'Single Metric')
         self.tab2.addTab(metric_2g_container.native, '2 Genes')
         last_tab = self.tab2.addTab(umap_container.native, 'umap')
+        self.tab2.addTab(diff_expr_container.native, 'Diff Expr')
         self.tab2.nb_tabs = last_tab
 
         self.viewer.window.add_dock_widget(self.tab1, name='Tissue visualization')
