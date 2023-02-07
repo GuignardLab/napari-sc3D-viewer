@@ -676,15 +676,19 @@ class DisplayEmbryo():
     def display_diff_expressed(self):
         tissue_to_num = {v:k for k, v in self.embryo.corres_tissue.items()}
         tissue_to_plot = tissue_to_num[self.tissue_diff.value]
-        self.embryo.get_3D_differential_expression([tissue_to_plot], self.vol_th.value/100, all_genes=True)
+        diff_expr = self.embryo.get_3D_differential_expression(
+            [tissue_to_plot],
+            self.vol_th.value/100,
+            all_genes=True
+        )[tissue_to_plot]
         with plt.style.context('dark_background'):
             fig, ax = plt.subplots()
             self.embryo.plot_volume_vs_neighbs(tissue_to_plot, print_top=10, ax=ax)
             fig.show()
-        self.gene_diff.choices = self.embryo.diff_expressed_3D[tissue_to_plot].sort_values(
+        self.gene_diff.choices = diff_expr.sort_values(
             "Localization score",
-            ascending=False)[:10]['Gene names'].values
-        return
+            ascending=False
+        )[:10]['Gene names'].values
 
     def show_diff_gene(self):
         self.gene.value = self.gene_diff.value
@@ -694,7 +698,7 @@ class DisplayEmbryo():
         tissue_label = widgets.Label(value='Choose tissue:')
         self.tissue_diff = widgets.ComboBox(choices=self.all_tissues)
         vol_th_label = widgets.Label(value='Minimum volume expressed [% of total]')
-        self.vol_th = widgets.FloatSlider(value=2.5, min=1, max=99)
+        self.vol_th = widgets.FloatSlider(value=2.5, min=1, max=45, step=.5)
         button = widgets.FunctionGui(self.display_diff_expressed ,call_button='Display differentially expressed')
         gene_diff = []
         diff_gene_label_label = widgets.Label(value='Top 10 differentially expressed genes:')
