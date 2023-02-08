@@ -102,11 +102,18 @@ class DisplayEmbryo:
                     m, M = 0, 1
                 else:
                     m, M = points.face_contrast_limits
-                if points.face_colormap.name in plt.colormaps():
+                if (
+                    points.face_colormap.name in plt.colormaps()
+                    or isinstance(points.face_colormap, Colormap)
+                ):
+                    if points.face_colormap.name in plt.colormaps():
+                        cmap = points.face_colormap.name
+                    else:
+                        cmap = points.mplcmap
                     fig.colorbar(
                         cm.ScalarMappable(
                             norm=colors.Normalize(m, M),
-                            cmap=points.face_colormap.name,
+                            cmap=cmap,
                         ),
                         label=points.metadata["gene"] + ", normalized values",
                         ax=ax,
@@ -117,7 +124,7 @@ class DisplayEmbryo:
                     fig.colorbar(
                         cm.ScalarMappable(
                             norm=colors.Normalize(min_, max_),
-                            cmap=points.face_colormap.name,
+                            cmap=cmap,
                         ),
                         label=points.metadata["gene"] + ", original values",
                         ax=ax,
@@ -436,8 +443,27 @@ class DisplayEmbryo:
             points.face_color_mode = "colormap"
         if not self.cmap_check.value:
             points.face_colormap = self.cmap.value
+            points.mplcmap = None
         else:
             init_value = self.grey.value
+            cmap_mpl = {
+                "red": [
+                    [0., init_value, init_value],
+                    [1., 0., 0.]
+                ],
+                "blue": [
+                    [0., init_value, init_value],
+                    [1., 0., 0.]
+                ],
+                "green": [
+                    [0., init_value, init_value],
+                    [1., 0., 0.]
+                ],
+            }
+            cmap_mpl[self.manual_color.value.lower()] = [
+                    [0., init_value, init_value],
+                    [1., 1., 1.]
+                ]
             if self.manual_color.value == "Red":
                 color = 0
             elif self.manual_color.value == "Green":
@@ -450,6 +476,8 @@ class DisplayEmbryo:
             ]
             cmap_val[1][color] = 1
             cmap = Colormap(cmap_val)
+            mplcmap = colors.LinearSegmentedColormap("Manual cmap", cmap_mpl)
+            points.mplcmap = mplcmap
             points.face_colormap = cmap
         points.refresh()
 
