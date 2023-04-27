@@ -42,8 +42,8 @@ Installing [napari] and the [napari-sc3d-viewer] plugin can be done either throu
 If you have decided to use command line, as [napari] developers do, we strongly recommend to install the viewer in an environement such as a conda environment `conda` for example:
 
 ```shell
-    conda create -n sc3D python=3.10
-    conda activate sc3D
+conda create -n sc3D python=3.10
+conda activate sc3D
 ```
 
 ### Installing napari
@@ -55,10 +55,10 @@ The first step is to [install napari](https://napari.org/stable/tutorials/fundam
 Installing [napari] can sometimes be difficult. If you try to install [napari] via the command line and it gets stuck "resolving the environment" you can try to install it the following way:
 
 ```shell
-    conda create -n sc3D python=3.10
-    conda activate sc3D
-    conda install pyqt pip
-    pip install napari
+conda create -n sc3D python=3.10
+conda activate sc3D
+conda install pyqt pip
+pip install napari
 ```
 
 ### Installing napari-sc3D-viewer
@@ -75,19 +75,19 @@ To install [napari-sc3D-viewer] with a visual interface, you should use the [nap
 Another way is to install `napari-sc3D-viewer` via [pip] or via [conda]:
 
 ```shell
-    conda install napari-sc3d-viewer
+conda install napari-sc3d-viewer
 ```
 
 or
 
 ```shell
-    pip install napari-sc3d-viewer
+pip install napari-sc3d-viewer
 ```
 
 Finally, to install latest development version :
 
 ```shell
-    pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
+pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
 ```
 
 #### Installation of the surface computation module
@@ -95,25 +95,25 @@ Finally, to install latest development version :
 To install the surface computation enabled version it is necessary to use Python 3.9 (until [VTK] is ported to Python 3.10) and you can run one of the following commands:
 
 ```shell
-    pip install '.[pyvista]'
+pip install '.[pyvista]'
 ```
 
 from the correct folder or
 
 ```shell
-    pip install 'napari-sc3D-viewer[pyvista]'
+pip install 'napari-sc3D-viewer[pyvista]'
 ```
 
 or
 
 ```shell
-    conda install 'napari-sc3D-viewer[pyvista]'
+conda install 'napari-sc3D-viewer[pyvista]'
 ```
 
 to install directly from pip or
 
 ```shell
-    pip install 'napari-sc3D-viewer[pyvista] @ git+https://github.com/GuignardLab/napari-sc3D-viewer.git'
+pip install 'napari-sc3D-viewer[pyvista] @ git+https://github.com/GuignardLab/napari-sc3D-viewer.git'
 ```
 
 to install the latest version
@@ -127,7 +127,7 @@ to install the latest version
 First, you need to start [napari], for example, one can start it from a terminal just by typing:
 
 ```shell
-    napari
+napari
 ```
 
 in the correct environment.
