@@ -21,7 +21,7 @@ Because the datasets representing the mouse embryo at stages E8.5 and E9.0 are r
 - [E8.5 replicate 2](https://doi.org/10.6084/m9.figshare.21695849.v1)
 - [E9.0 replicate 1](https://doi.org/10.6084/m9.figshare.21695879.v1)
 
-Once downloaded, one can open them in the viewer as explained below (note that the files for the tissue names are stored in the json file there: `napari-sc3D-viewer/test_data/corresptissues.json`). It can be downloaded by clicking on the following [link](https://github.com/GuignardLab/napari-sc3D-viewer/blob/main/test_data/corresptissues.json)
+Once downloaded, one can open them in the viewer as explained below (note that the files for the tissue names are stored in the json file there: `napari-sc3D-viewer/test_data/corresptissues.json`). It can be downloaded by clicking on the following [link](https://raw.githubusercontent.com/GuignardLab/napari-sc3D-viewer/main/test_data/corresptissues.json)
 
 ## Installation
 
