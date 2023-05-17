@@ -307,6 +307,40 @@ class DisplayEmbryo:
                 curr_face.append(face_list.pop(0))
             faces.append(curr_face)
         faces = np.array(faces)
+        # def calculate_circumcenter_3d(p1, p2, p3):
+        #     from numpy.linalg import norm
+        #     norm_cross = norm(np.cross(p1-p2, p2-p3))
+        #     r = norm(p1 - p2)*norm(p2 - p3)*norm(p1-p3)/ (2*norm_cross)
+        #     alpha = norm(p2-p3)**2 * (p1-p2)@(p1-p3) / (2*norm_cross**2)
+        #     beta = norm(p1-p3)**2 * (p2-p1)@(p2-p3) / (2*norm_cross**2)
+        #     gamma = norm(p1-p2)**2 * (p3-p1)@(p3-p2) / (2*norm_cross**2)
+        #     c = alpha*p1 + beta*p2 + gamma*p3
+        #     return c, r
+        
+        # from scipy.spatial import Delaunay
+        # from itertools import combinations
+        # tri = Delaunay(points)
+        # delaunay_graph = {}
+        # vertex_to_simplex = {}
+        # for i, N in enumerate(tri.simplices):
+        #     for ei in N:
+        #         vertex_to_simplex.setdefault(ei, set()).add(i)
+        #     for e1, e2 in combinations(np.sort(N), 2):
+        #         delaunay_graph.setdefault(e1, set([])).add(e2)
+        #         delaunay_graph.setdefault(e2, set([])).add(e1)
+        # new_faces = []
+        # for face in tri.convex_hull:
+        #     corres_simplex = set.intersection(*(vertex_to_simplex[ei] for ei in face)).pop()
+        #     c, r = calculate_circumcenter_3d(*points[face])
+        #     valid = True
+        #     potential_pb = set.intersection(*(delaunay_graph[ei] for ei in face))
+        #     while valid and 0<len(potential_pb):
+        #         other = potential_pb.pop()
+        #         if np.linalg.norm(c - points[other]) < r:
+        #             outside.update(set(tri.simplices[corres_simplex]).difference(face))    
+        #             valid = False
+        # return np.array([*outside])
+
         self.viewer.add_surface(
             (mesh.points, faces),
             colormap=(self.color_map_tissues.get(t_id, [0, 0, 0]),),
