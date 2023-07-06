@@ -1006,7 +1006,7 @@ class DisplayEmbryo:
             16: [1.0, 0.9803921568627451, 0.9803921568627451],
             18: [0.47058823529411764, 0.16470588235294117, 0.7137254901960784],
             20: [0.5019607843137255, 0.5019607843137255, 0.5019607843137255],
-            21: [0.9803921568627451, 0.0, 0.5294117647058824],
+            21: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
             22: [0.5098039215686274, 0.1803921568627451, 0.10980392156862745],
             23: [0.5215686274509804, 0.4, 0.050980392156862744],
             24: [0.803921568627451, 0.1607843137254902, 0.5647058823529412],
@@ -1015,7 +1015,7 @@ class DisplayEmbryo:
             30: [0.5450980392156862, 0.2784313725490196, 0.36470588235294116],
             31: [1.0, 0.7568627450980392, 0.1450980392156863],
             32: [0.8705882352941177, 0.6274509803921569, 0.9921568627450981],
-            33: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
+            33: [0.9803921568627451, 0.0, 0.5294117647058824],
             34: [0.9725490196078431, 0.6313725490196078, 0.6235294117647059],
             35: [0.7098039215686275, 0.9372549019607843, 0.7098039215686275],
             36: [0.1803921568627451, 0.8509803921568627, 1.0],
@@ -1055,6 +1055,7 @@ class DisplayEmbryo:
             properties=properties,
             metadata={"gene": None, "2genes": None},
             shown=shown,
+            size=15
         )
 
         self.all_tissues = [
@@ -1076,8 +1077,8 @@ class DisplayEmbryo:
         diff_expr_container = self.build_diff_expr_container()
         self.tab2.addTab(metric_1g_container.native, "Single Metric")
         self.tab2.addTab(metric_2g_container.native, "2 Genes")
-        last_tab = self.tab2.addTab(umap_container.native, "umap")
-        self.tab2.addTab(diff_expr_container.native, "Diff Expr")
+        self.tab2.addTab(umap_container.native, "umap")
+        last_tab = self.tab2.addTab(diff_expr_container.native, "Diff Expr")
         self.tab2.nb_tabs = last_tab
 
         self.viewer.window.add_dock_widget(
