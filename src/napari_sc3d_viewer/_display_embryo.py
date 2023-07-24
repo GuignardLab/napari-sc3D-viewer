@@ -17,6 +17,7 @@ from matplotlib.backends.backend_qt5agg import (
 )
 from matplotlib import cm, colors
 import numpy as np
+from random import sample
 
 try:
     from pyvista import PolyData
@@ -194,7 +195,9 @@ class DisplayEmbryo:
         if (
             points.metadata["gene"] is not None
             or points.metadata["2genes"] is not None
+            or self.color_map_tissues != self.original_color_map_tissues
         ):
+            self.color_map_tissues = self.original_color_map_tissues.copy()
             points.face_color = [
                 self.color_map_tissues[self.embryo.tissue[c]]
                 for c in points.properties["cells"]
@@ -202,6 +205,35 @@ class DisplayEmbryo:
             points.face_color_mode = "direct"
             points.metadata["gene"] = None
             points.metadata["2genes"] = None
+        points.refresh()
+
+    def recolor_tissues(self):
+        # Get the points and make sure they are correctly selected
+        points = self.viewer.layers.selection.active
+        if points is None or points.as_layer_data_tuple()[-1] != "points":
+            error_points_selection(show=self.show)
+            return
+
+        # Change the color of the cells
+        tissues = set(
+            [
+                self.embryo.tissue[c]
+                for c in points.properties["cells"][points.shown]
+            ]
+        )
+        nb_tissues = len(tissues)+1
+        subset_map = {t: i+1 for i, t in enumerate(sample(tissues, len(tissues)))}
+        self.color_map_tissues = {
+            t: cm.tab20(subset_map.get(t, 0) / nb_tissues)
+            for t in self.embryo.all_tissues
+        }
+        points.face_color = [
+            self.color_map_tissues[self.embryo.tissue[c]]
+            for c in points.properties["cells"]
+        ]
+        points.face_color_mode = "direct"
+        points.metadata["gene"] = None
+        points.metadata["2genes"] = None
         points.refresh()
 
     def select_tissues(self):
@@ -582,6 +614,10 @@ class DisplayEmbryo:
             self.show_tissues, call_button="Cell type colouring"
         )
 
+        recolor_tissues = widgets.FunctionGui(
+            self.recolor_tissues, call_button="Recolour tissues"
+        )
+
         # Coloring by tissues
         run_legend = widgets.FunctionGui(
             self.disp_legend, call_button="Display legend"
@@ -597,7 +633,7 @@ class DisplayEmbryo:
         )
         display_container.native.layout().addStretch(1)
         tissue_container = widgets.Container(
-            widgets=[select_container, display_container], labels=False
+            widgets=[select_container, recolor_tissues, display_container], labels=False
         )
         tissue_container.native.layout().addStretch(1)
         return tissue_container
@@ -1033,6 +1069,7 @@ class DisplayEmbryo:
                 v: cm.tab20(i / nb_tissues)
                 for i, v in enumerate(self.embryo.all_tissues)
             }
+        self.original_color_map_tissues = self.color_map_tissues.copy()
         colors_rgb = [
             self.color_map_tissues.get(self.embryo.tissue[c], [0, 0, 0])
             for c in cells
@@ -1052,6 +1089,7 @@ class DisplayEmbryo:
             self.embryo.corres_tissue.get(t, f"{t}")
             for t in self.embryo.all_tissues
         ]
+        self.all_tissues = sorted(self.all_tissues)
 
         tissue_container = self.build_tissue_selection()
         surf_container = self.build_surf_container()
