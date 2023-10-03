@@ -6,6 +6,7 @@
 [![tests](https://github.com/GuignardLab/napari-sc3D-viewer/workflows/tests/badge.svg)](https://github.com/GuignardLab/napari-sc3D-viewer/actions)
 [![codecov](https://codecov.io/gh/GuignardLab/napari-sc3D-viewer/branch/main/graph/badge.svg)](https://codecov.io/gh/GuignardLab/napari-sc3D-viewer)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-sc3D-viewer)](https://napari-hub.org/plugins/napari-sc3D-viewer)
+[![Downloads](https://static.pepy.tech/badge/napari-sc3d-viewer)](https://pepy.tech/project/napari-sc3d-viewer)
 
 A plugin to visualise 3D spatial single cell omics
 
