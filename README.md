@@ -93,7 +93,7 @@ pip install git+https://github.com/GuignardLab/napari-sc3D-viewer.git
 
 #### Installation of the surface computation module
 
-To install the surface computation enabled version it is necessary to use Python 3.9 (until [VTK] is ported to Python 3.10) and you can run one of the following commands:
+To install the surface computation enabled version you can run one of the following commands:
 
 ```shell
 pip install '.[pyvista]'
