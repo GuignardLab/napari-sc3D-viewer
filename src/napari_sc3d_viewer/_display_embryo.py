@@ -3,6 +3,7 @@ This file is subject to the terms and conditions defined in
 file 'LICENCE', which is part of this source code package.
 Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
+
 from qtpy.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from magicgui import widgets
 from ._umap_selection import UmapSelection
@@ -23,7 +24,7 @@ try:
     from pyvista import PolyData
 
     pyvista = True
-except Exception as e:
+except Exception as _:
     print(
         (
             "pyvista is not installed. No surfaces can be generated\n"
@@ -155,8 +156,13 @@ class DisplayEmbryo:
                 for axes in np.where(on_channel)[0]:
                     scale_square[..., axes] = VS[1].reshape(-1, 1)
                 ax.imshow(scale_square.swapaxes(1, 0), origin="lower")
-                recap_g1 = lambda x: x * 255 / max_g1
-                recap_g2 = lambda x: x * 255 / max_g2
+
+                def recap_g1(x):
+                    return x * 255 / max_g1
+
+                def recap_g2(x):
+                    return x * 255 / max_g2
+
                 vals_g1 = np.arange(np.floor(max_g1) + 1, dtype=int)
                 vals_g2 = np.arange(np.floor(max_g2) + 1, dtype=int)
                 ax.set_xticks(recap_g1(vals_g1))
@@ -221,8 +227,10 @@ class DisplayEmbryo:
                 for c in points.properties["cells"][points.shown]
             ]
         )
-        nb_tissues = len(tissues)+1
-        subset_map = {t: i+1 for i, t in enumerate(sample(tissues, len(tissues)))}
+        nb_tissues = len(tissues) + 1
+        subset_map = {
+            t: i + 1 for i, t in enumerate(sample(tissues, len(tissues)))
+        }
         self.color_map_tissues = {
             t: cm.tab20(subset_map.get(t, 0) / nb_tissues)
             for t in self.embryo.all_tissues
@@ -330,7 +338,7 @@ class DisplayEmbryo:
         faces = []
         while 0 < len(face_list):
             nb_P = face_list.pop(0)
-            if not nb_P in face_sizes:
+            if nb_P not in face_sizes:
                 face_sizes[nb_P] = 0
             face_sizes[nb_P] += 1
             curr_face = []
@@ -366,8 +374,8 @@ class DisplayEmbryo:
         if is_metric:
             gene = metric
         if (
-            not gene in self.embryo.anndata.obs.columns
-            and not gene in self.embryo.anndata.raw.var_names
+            gene not in self.embryo.anndata.obs.columns
+            and gene not in self.embryo.anndata.raw.var_names
         ):
             self.gene_output.value = f"Gene '{gene}' not found"
             return
@@ -384,7 +392,7 @@ class DisplayEmbryo:
                 colors = self.embryo.anndata.obs[metric].to_numpy()
                 try:
                     mask &= ~np.isnan(colors)
-                except Exception as e:
+                except Exception as _:
                     print(colors.dtype)
                     return "Failed"
                 points.shown = mask
@@ -523,10 +531,10 @@ class DisplayEmbryo:
         high_th = self.threhold_high_2g.value
         main_bi_color = self.main_bi_color.value
 
-        if not gene1 in self.embryo.anndata.raw.var_names:
+        if gene1 not in self.embryo.anndata.raw.var_names:
             self.metric_2g_output.value = f"'{gene1}' not found"
             return
-        if not gene2 in self.embryo.anndata.raw.var_names:
+        if gene2 not in self.embryo.anndata.raw.var_names:
             self.metric_2g_output.value = f"'{gene2}' not found"
             return
 
@@ -554,10 +562,12 @@ class DisplayEmbryo:
             max_g2 = np.percentile(C[1][mask], high_th)
 
             # Normalize and threshold the genes from 0 to 1
-            norm = lambda C: (C - [[min_g1], [min_g2]]) / [
-                [max_g1 - min_g1],
-                [max_g2 - min_g2],
-            ]
+            def norm(C):
+                return (C - [[min_g1], [min_g2]]) / [
+                    [max_g1 - min_g1],
+                    [max_g2 - min_g2],
+                ]
+
             V = norm(C)
             V[V < 0] = 0
             V[1 < V] = 1
@@ -633,7 +643,8 @@ class DisplayEmbryo:
         )
         display_container.native.layout().addStretch(1)
         tissue_container = widgets.Container(
-            widgets=[select_container, recolor_tissues, display_container], labels=False
+            widgets=[select_container, recolor_tissues, display_container],
+            labels=False,
         )
         tissue_container.native.layout().addStretch(1)
         return tissue_container
@@ -1076,7 +1087,7 @@ class DisplayEmbryo:
         ]
 
         self.viewer.dims.ndisplay = 3
-        points = self.viewer.add_points(
+        _ = self.viewer.add_points(
             positions,
             face_color=colors_rgb,
             properties=properties,

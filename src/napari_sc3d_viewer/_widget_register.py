@@ -3,6 +3,7 @@ This file is subject to the terms and conditions defined in
 file 'LICENCE', which is part of this source code package.
 Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
+
 import json
 from sc3D import Embryo
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QPushButton
@@ -20,7 +21,7 @@ class RegisterSc3D(QWidget):
     def _load_data(self, weights, tissue_ignore):
         data_path = Path(self.h5ad_file.line_edit.value)
         tissue_names = Path(self.json_file.line_edit.value)
-        if not data_path.exists() or not data_path.suffix in [
+        if not data_path.exists() or data_path.suffix not in [
             ".h5ad",
             ".h5",
             ".csv",
@@ -35,7 +36,7 @@ class RegisterSc3D(QWidget):
                         k if isinstance(k, int) else eval(k): v
                         for k, v in corres_tissues.items()
                     }
-                except Exception as e:
+                except Exception as _:
                     error_json_format(show=self.show)
         else:
             corres_tissues = {}
@@ -55,7 +56,7 @@ class RegisterSc3D(QWidget):
             tissue_weight = self.tissue_weight.value
             try:
                 tissue_weight = eval(tissue_weight)
-            except Exception as e:
+            except Exception as _:
                 print("Could not read the tissue weights")
                 tissue_weight = {}
             if not isinstance(tissue_weight, dict):
@@ -91,7 +92,7 @@ class RegisterSc3D(QWidget):
         self._load_data(weights=True, tissue_ignore=True)
         try:
             self.embryo.registration_3d(th_d=self.th_d.value)
-        except:
+        except Exception as _:
             self.out_read.value = "The registration failed :/"
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget("all")
@@ -108,7 +109,7 @@ class RegisterSc3D(QWidget):
                 alpha=self.alpha.value,
                 pre_registration=self.pre_reg.value,
             )
-        except:
+        except Exception as _:
             self.out_read.value = "The registration failed :/"
         # Clearing the viewer and running the viewer plugin
         self.viewer.window.remove_dock_widget("all")
