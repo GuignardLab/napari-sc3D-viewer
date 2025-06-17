@@ -3,6 +3,7 @@ This file is subject to the terms and conditions defined in
 file 'LICENCE', which is part of this source code package.
 Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
+
 import json
 from sc3D import Embryo
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QPushButton
@@ -20,7 +21,7 @@ class LoadAtlas(QWidget):
     def _load_data(self):
         data_path = Path(self.h5ad_file.line_edit.value)
         tissue_names = Path(self.json_file.line_edit.value)
-        if not data_path.exists() or not data_path.suffix in [
+        if not data_path.exists() or data_path.suffix not in [
             ".h5ad",
             ".h5",
             ".csv",
@@ -35,7 +36,7 @@ class LoadAtlas(QWidget):
                         k if isinstance(k, int) else eval(k): v
                         for k, v in corres_tissues.items()
                     }
-                except Exception as e:
+                except Exception as _:
                     error_json_format(show=self.show)
         else:
             corres_tissues = {}
@@ -147,10 +148,12 @@ class LoadAtlas(QWidget):
         tab_atlas.addTab(load.native, "File paths")
         tab_atlas.addTab(params.native, "Parameters")
         tab_atlas.native = tab_atlas
+        tab_atlas.name = "tab_atlas"
 
         # Loading button
         load_atlas = QPushButton("Load Atlas")
         load_atlas.native = load_atlas
+        load_atlas.name = "load_atlas"
         atlas_load_W = widgets.Container(
             widgets=[tab_atlas, load_atlas], labels=False
         )

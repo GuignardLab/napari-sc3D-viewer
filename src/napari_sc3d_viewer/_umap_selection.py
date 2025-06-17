@@ -18,6 +18,7 @@ from matplotlib.widgets import LassoSelector
 from matplotlib.path import Path as PathMPL
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 
+
 # This class is directly copied from there:
 # https://matplotlib.org/stable/gallery/widgets/lasso_selector_demo_sgskip.html
 # I got the info from there:
@@ -122,7 +123,7 @@ class UmapSelection:
                     vals = safe_toarray(vals.X)[
                         points.features["current_view"], 0
                     ]
-                    hist = ax_hist.hist(vals, bins=50)
+                    _ = ax_hist.hist(vals, bins=50)
                     ax_hist.set_yticks([])
                     if self.tissues.value:
                         ax_hist.set_yticks([])
@@ -159,7 +160,7 @@ class UmapSelection:
                             gene_id = top_genes[j]
                             vals = self.embryo.anndata.raw[indices, gene_name]
                             ax_hist.clear()
-                            hist = ax_hist.hist(
+                            _ = ax_hist.hist(
                                 safe_toarray(vals.X)[:, 0], bins=50
                             )
                             ax_hist.set_yticks([])
@@ -280,7 +281,7 @@ class UmapSelection:
             ax_T.set_xticks([])
             ax_T.set_yticks([])
             ax_T.set_ylabel("umap 2")
-            ax_T.set_title(f"Tissues")
+            ax_T.set_title("Tissues")
             tissues_found = set(
                 [self.embryo.tissue[c] for c in self.corres_to_mask]
             )
@@ -329,7 +330,7 @@ class UmapSelection:
 
         if (
             self.points is None
-            or not self.gene.value in self.embryo.anndata.raw.var_names
+            or self.gene.value not in self.embryo.anndata.raw.var_names
         ):
             return f"'{self.gene.value}' not found"
 
