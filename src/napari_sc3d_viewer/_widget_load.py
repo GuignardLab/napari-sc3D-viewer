@@ -5,10 +5,10 @@ Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 
 import json
-from sc3D import Embryo
+from sc3D import SpatialOmicArray
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QPushButton
 from magicgui import widgets
-from ._display_embryo import DisplayEmbryo
+from ._display_embryo import DisplaySpatialOmicArray
 from ._utils import error_json_format
 from pathlib import Path
 
@@ -53,7 +53,7 @@ class LoadAtlas(QWidget):
         else:
             sample_list = None
 
-        self.embryo = Embryo(
+        self.embryo = SpatialOmicArray(
             data_path,
             store_anndata=True,
             corres_tissue=corres_tissues,
@@ -73,7 +73,9 @@ class LoadAtlas(QWidget):
         # Clearing the viewer and running the viewer plugin
         self._load_data()
         self.viewer.window.remove_dock_widget("all")
-        return DisplayEmbryo(self.viewer, self.embryo, show=self.show)
+        return DisplaySpatialOmicArray(
+            self.viewer, self.embryo, show=self.show
+        )
 
     def __init__(self, napari_viewer, *, show=False):
         """
