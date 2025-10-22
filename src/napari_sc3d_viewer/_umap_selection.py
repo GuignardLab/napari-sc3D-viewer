@@ -359,7 +359,7 @@ class UmapSelection:
     def __init__(
         self,
         viewer,
-        embryo,
+        SOA,
         gene,
         tissues,
         stats,
@@ -372,7 +372,7 @@ class UmapSelection:
 
         Args:
             viewer (napari.Viewer): napari viewer containing the `sc3D` points
-            embryo (sc3D.Embryo): embryo to display
+            SOA (sc3D.SpatialOmicArray): SOA to display
             gene (str): gene to display on the umap
             tissues (bool): whether or not to display the umap with the tissues
             stats (str ['Standard Deviation' | 'Mean' | 'Median']): Stat to compute
@@ -385,7 +385,7 @@ class UmapSelection:
         super().__init__()
         self.viewer = viewer
         self.points = self.viewer.layers.selection.active
-        self.embryo = embryo
+        self.embryo = SOA
         self.stats = stats
         self.tissues = tissues
         self.gene = gene

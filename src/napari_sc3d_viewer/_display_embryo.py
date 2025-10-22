@@ -34,7 +34,7 @@ except Exception as _:
     pyvista = False
 
 
-class DisplayEmbryo:
+class DisplaySpatialOmicArray:
     """
     A class to build the plugin to display spatial transcriptomics
 
@@ -1015,18 +1015,18 @@ class DisplayEmbryo:
         diff_expr_container.native.layout().addStretch(1)
         return diff_expr_container
 
-    def __init__(self, viewer, embryo, *, show=False):
+    def __init__(self, viewer, SOA, *, show=False):
         """
         Initialise the plugin.
-        Takes as an input a napari viewer and a sc3D embryo
+        Takes as an input a napari viewer and a sc3D SOA
 
         Args:
             viewer (napari.Viewer): the viewer for the plugin
-            embryo (sc3D.Embryo): the embryo to display
+            SOA (sc3D.SpatialOmicArray): the embryo to display
             show (bool): an argument to practically run the tests
         """
         self.viewer = viewer
-        self.embryo = embryo
+        self.embryo = SOA
         self.color_map_tissues = {
             1: [0, 0, 0],
             11: [0, 0, 0],
@@ -1062,7 +1062,7 @@ class DisplayEmbryo:
         }
         self.tissues_to_plot = [18, 21, 30, 31, 34]
         self.tissues_to_plot = [
-            t for t in self.tissues_to_plot if t in embryo.all_tissues
+            t for t in self.tissues_to_plot if t in SOA.all_tissues
         ]
         if len(self.tissues_to_plot) < 1:
             self.tissues_to_plot = list(self.embryo.all_tissues)
